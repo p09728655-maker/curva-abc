@@ -870,7 +870,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
     <div class="header-right" style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
       <button id="btn-theme" onclick="toggleTheme()" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;padding:.35rem .65rem;font-size:.85rem;cursor:pointer;transition:all .15s;color:var(--text-muted);font-family:inherit;" title="Alternar tema">🌙</button>
       <button id="btn-salvar-header" onclick="salvarHtmlComDados()" style="display:none;align-items:center;gap:.35rem;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:.38rem .9rem;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .18s;white-space:nowrap;font-family:inherit;">💾 Salvar</button>
-      <button id="btn-trocar" style="display:none;">⇄ Trocar</button>
     </div>
   </header>
 
@@ -1984,7 +1983,6 @@ const CRUZADA_COLORS={
 const importScreen=document.getElementById('import-screen');
 const dashboardEl=document.getElementById('dashboard');
 const importError=document.getElementById('import-error');
-document.getElementById('btn-trocar').addEventListener('click',resetAll);
 
 function extrairSheetId(url){
   const m=url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
