@@ -973,7 +973,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
     <button class="tab-btn" id="tab-btn-evolucao" data-tab="evolucao" style="display:none;">📈 Evolução Mensal</button>
     <button class="tab-btn" id="tab-btn-mov" data-tab="mov" style="display:none;">📊 Movimentação</button>
     <button class="tab-btn" id="tab-btn-modelos" data-tab="modelos" style="display:none;">🎨 Modelos/Cores</button>
-    <button class="tab-btn" id="tab-btn-material" data-tab="material" style="display:none;">🔧 Assistências</button>
   </div>
 
   <main>
@@ -1031,25 +1030,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
       </div>
       <div id="mod-audit-panel" style="display:none;background:var(--surface2,#1e293b);border:1px solid var(--border,#334155);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.83rem;line-height:1.55;"></div>
       <div id="mod-content" style="overflow-x:auto;"></div>
-    </section>
-
-    <!-- ASSISTÊNCIAS TÉCNICAS -->
-    <section id="sec-material" style="display:none;">
-      <div class="section-title">Assistências por Modelo — Relatório × Curva ABC</div>
-      <p style="color:var(--text-muted);font-size:.8rem;margin:.2rem 0 .6rem;">Assistências técnicas agrupadas por modelo, cruzadas pelo <strong>código</strong> do produto com a Curva ABC. Filtre por família/produto e navegue pelas visões; clique num modelo para ver tudo sobre ele.</p>
-      <div class="mov-header" style="flex-wrap:wrap;gap:.5rem;align-items:center;">
-        <span class="mov-label">Família:</span>
-        <select id="assist-fam" onchange="renderMaterialTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;max-width:280px;"><option value="">Todas</option></select>
-        <input id="assist-search" type="text" placeholder="Buscar produto, peça ou código..." oninput="renderMaterialTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;min-width:200px;flex:1 1 180px;">
-        <span class="mov-label">Motivo:</span>
-        <select id="assist-cat" onchange="renderMaterialTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"><option value="">Todos</option></select>
-        <button onclick="_assistClear()" style="background:var(--surface2,#1e293b);color:var(--text-muted);border:1px solid var(--border,#334155);border-radius:6px;padding:.4rem .7rem;font-size:.8rem;cursor:pointer;font-family:inherit;">✕ Limpar</button>
-        <label title="Exclui Logística / Estoque (ex.: estoque regulador) — mostra só defeito de qualidade" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;color:var(--text-muted);cursor:pointer;user-select:none;"><input type="checkbox" id="assist-qual" onchange="renderMaterialTab()" style="accent-color:var(--accent,#FF5C1F);cursor:pointer;"> 🎯 Só qualidade</label>
-        <label title="Oculta modelos fora da Curva ABC (peças/ferragens sem venda, ex.: parafusos)" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;color:var(--text-muted);cursor:pointer;user-select:none;"><input type="checkbox" id="assist-curva" onchange="renderMaterialTab()" style="accent-color:var(--accent,#FF5C1F);cursor:pointer;"> 📈 Só na curva</label>
-        <button onclick="printAssist()" style="margin-left:auto;background:var(--accent,#FF5C1F);color:#0a0a0b;border:none;border-radius:6px;padding:.45rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Imprimir / PDF</button>
-      </div>
-      <div id="assist-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.55rem 0 .8rem;"></div>
-      <div id="mat-content"></div>
     </section>
 
     <!-- EDITAR CLASSES -->
@@ -2288,7 +2268,6 @@ function finalizarCargaSheets(){
   const sh=document.getElementById('btn-salvar-header');if(sh)sh.style.display='inline-flex';
   const bt=document.getElementById('btn-trocar');if(bt)bt.style.display='inline-flex';
   ['tab-btn-evolucao','tab-btn-mov','tab-btn-modelos'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='inline-block';});
-  {const mt=document.getElementById('tab-btn-material');if(mt)mt.style.display=MATERIAL.length?'inline-block':'none';}
   renderPeriodoChips();
   // Padrão: abre já na Curva ABC consolidada dos últimos 3 meses (janela de 90 dias)
   consolidarPeriodos();
