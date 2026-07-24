@@ -4862,7 +4862,15 @@ function renderModAudit(){
 }
 (function(){const d=localStorage.getItem('mod_debug')==='1';const chk=document.getElementById('mod-debug-chk');if(chk)chk.checked=d;})();
 document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
-(function(){const u=localStorage.getItem('gs_last_url')||DEFAULT_SHEET_URL;const el=document.getElementById('gs-url');if(el)el.value=u;})();
+(function(){
+  const u=localStorage.getItem('gs_last_url')||DEFAULT_SHEET_URL;
+  const el=document.getElementById('gs-url');
+  if(el)el.value=u;
+  // Já tendo um endereço válido, carrega direto o dashboard e pula a tela de
+  // importação. Se a carga falhar (offline/sem acesso), a própria
+  // iniciarCargaSheets reexibe a tela de importação com a mensagem de erro.
+  if(u && extrairSheetId(u)) iniciarCargaSheets();
+})();
 const _gsUrlEl=document.getElementById('gs-url');
 if(_gsUrlEl)_gsUrlEl.addEventListener('keydown',e=>{if(e.key==='Enter')iniciarCargaSheets();});
 
