@@ -1019,6 +1019,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
         <input id="mod-search-input" type="text" placeholder="Buscar modelo..." oninput="renderModelosTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;min-width:160px;">
         <span class="mov-label">Modelo:</span>
         <select id="mod-select" onchange="renderModelosTab()" style="min-width:340px;max-width:100%;padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"></select>
+        <button onclick="printModelo()" title="Gerar folha de estudo do modelo selecionado (imprimir ou salvar em PDF)" style="margin-left:auto;display:inline-flex;align-items:center;gap:.35rem;background:var(--accent,#FF5C1F);color:#0a0a0b;border:none;border-radius:6px;padding:.45rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Imprimir estudo</button>
       </div>
       <div id="mod-verdict" style="font-weight:700;font-size:.9rem;line-height:1.5;margin:.6rem 0;text-align:left;"></div>
       <div id="mod-hero" style="display:none;gap:1.1rem;flex-wrap:wrap;margin:.4rem 0 1rem;align-items:flex-start;"></div>
@@ -1751,6 +1752,9 @@ function consolidarPeriodos(){
   applyFilters();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     try{const m=computeMetrics();renderCharts(m);}catch(e){console.warn('[charts]',e);}
+    // Entra já na aba Modelos/Cores (após dimensionar os gráficos da Análise, que
+    // precisa estar visível durante o render). A aba Modelos se re-renderiza sozinha.
+    try{switchTab('modelos');}catch(e){console.warn('[entry-tab]',e);}
   }));
 }
 
@@ -2419,6 +2423,9 @@ function consolidarPeriodos(){
   applyFilters();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     try{const m=computeMetrics();renderCharts(m);}catch(e){console.warn('[charts]',e);}
+    // Entra já na aba Modelos/Cores (após dimensionar os gráficos da Análise, que
+    // precisa estar visível durante o render). A aba Modelos se re-renderiza sozinha.
+    try{switchTab('modelos');}catch(e){console.warn('[entry-tab]',e);}
   }));
 }
 
@@ -4766,6 +4773,141 @@ function renderModelosTab(){
   // Atualiza painel de auditoria se estiver aberto
   const auditPanel=document.getElementById('mod-audit-panel');
   if(auditPanel&&auditPanel.style.display!=='none')renderModAudit();
+}
+// ── Impressão: folha de estudo do modelo selecionado (Modelos/Cores) ──
+function printModelo(){
+  const sel=document.getElementById('mod-select');
+  if(!sel||!sel.value){alert('Selecione um modelo primeiro.');return;}
+  // Garante que o veredito/auditoria e a tabela estejam atualizados
+  try{renderModelosTab();}catch(e){}
+  const optText=(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'')||'';
+  const left=optText.split(' — ')[0];
+  const nome=(left.split(' · ').slice(1).join(' · ')||left).trim();
+  const codigo=sel.value;
+  const fileInfo=(document.getElementById('file-info-text')||{}).textContent||'';
+  const baseTxt=fileInfo.replace(/^Consolidado:\s*/,'').trim();
+  const veredictoHTML=(document.getElementById('mod-verdict')||{}).innerHTML||'';
+  const tabelaHTML=(document.getElementById('mod-content')||{}).innerHTML||'';
+  const heroEl=document.getElementById('mod-hero');
+  const fotosHTML=(heroEl&&heroEl.style.display!=='none')?(heroEl.innerHTML||''):'';
+  const d=new Date();
+  const dataStr=d.toLocaleDateString('pt-BR')+' às '+d.toLocaleString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  // Bloco de indicadores + canibalização a partir da auditoria (_MOD_AUDIT)
+  const a=_MOD_AUDIT;
+  const pctv=v=>v==null?'—':((v>=0?'+':'')+Number(v).toFixed(1)+'%');
+  const row=(k,v)=>`<tr><td class="k">${k}</td><td class="v">${v}</td></tr>`;
+  let indHTML='';
+  if(a){
+    indHTML+=`<table class="kv"><tbody>`;
+    indHTML+=row('Método',a.metodo||'—');
+    if(a.formula)indHTML+=row('Fórmula',a.formula);
+    if(a.consol){
+      indHTML+=row('Período atual'+(a.consol.recLabels&&a.consol.recLabels.length?` (${a.consol.recLabels.join(', ')})`:''),fmtBRL(a.consol.atual||0));
+      indHTML+=row('Período comparativo'+(a.consol.priLabels&&a.consol.priLabels.length?` (${a.consol.priLabels.join(', ')})`:''),fmtBRL(a.consol.comp||0));
+      indHTML+=row('Variação (consolidada)',pctv(a.consol.variacao));
+    }
+    if(a.curto){
+      indHTML+=row(`Curto prazo (${a.curto.compLabel} → ${a.curto.atualLabel})`,`${fmtBRL(a.curto.comp||0)} → ${fmtBRL(a.curto.atual||0)}`);
+      indHTML+=row('Variação do último mês',pctv(a.curto.variacao));
+    }
+    if(a.canibPct!=null)indHTML+=row('Índice de canibalização',`${a.canibPct}%${a.canibBand?' ('+a.canibBand+')':''}${a.impacto?' · Impacto '+a.impacto:''}`);
+    if(a.mix)indHTML+=row('Mix de cores',a.mix);
+    if(a.confianca)indHTML+=row('Confiança / histórico',a.confianca);
+    if(a.lancamento){
+      indHTML+=row('Cores novas',a.lancamento.nNovas);
+      indHTML+=row('Venda das cores novas',fmtBRL(a.lancamento.vendaNovas||0));
+      indHTML+=row('Perda das existentes',fmtBRL(a.lancamento.perdaExistentes||0));
+      indHTML+=row('Incremento líquido',fmtBRL(a.lancamento.incremento||0));
+    }
+    if(a.oportunidade){
+      const o=a.oportunidade;
+      if(o.classe)indHTML+=row('Classe na Curva ABC',`Classe ${o.classe}`);
+      if(o.participacao!=null)indHTML+=row('Participação no faturamento',Number(o.participacao).toFixed(1)+'%');
+    }
+    indHTML+=`</tbody></table>`;
+  }
+  const resumo=(a&&a.resumo)?a.resumo:'';
+  const w=window.open('','_blank');
+  if(!w){alert('Habilite pop-ups para gerar a impressão.');return;}
+  const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Estudo — ${esc(nome)} (${esc(codigo)})</title>
+<style>
+:root{--accent:#FF5C1F;--primary:#FF5C1F;--text:#18181B;--text-muted:#6b7280;--border:#d4d4d8;--surface2:#f4f4f5;--card:#fff;--bg:#fff;}
+*{box-sizing:border-box;}
+html,body{margin:0;background:#fff;color:var(--text);font-family:'Inter',-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.45;}
+.page{max-width:1000px;margin:0 auto;padding:24px 26px;}
+.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--accent);padding-bottom:10px;margin-bottom:14px;}
+.brand{font-weight:800;color:var(--accent);font-size:15px;letter-spacing:.3px;}
+.brand small{display:block;color:var(--text-muted);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.doc-meta{text-align:right;color:var(--text-muted);font-size:10.5px;}
+h1{font-size:20px;margin:2px 0 2px;color:var(--text);}
+.sub{color:var(--text-muted);font-size:11px;margin-bottom:2px;}
+.tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:10.5px;color:var(--text-muted);margin-right:5px;font-family:monospace;}
+.section{margin:16px 0;break-inside:avoid;}
+.section > .st{font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:3px;margin-bottom:8px;}
+.verd{font-size:13px;font-weight:700;line-height:1.5;}
+.verd span{font-weight:700;}
+table{border-collapse:collapse;width:100%;}
+table.kv td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top;font-size:11px;}
+table.kv td.k{color:var(--text-muted);width:44%;}
+table.kv td.v{text-align:right;font-weight:600;}
+.resumo{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-size:11.5px;line-height:1.5;color:#333;}
+table.mov-table{font-size:10.5px;}
+table.mov-table th{background:#f4f4f5;color:#52525b;text-align:left;padding:5px 6px;border-bottom:2px solid var(--border);font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+table.mov-table td{padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap;}
+table.mov-table tr:nth-child(even) td{background:#fafafa;}
+.fotos{display:flex;flex-wrap:wrap;gap:12px;}
+.fotos a{text-decoration:none;color:inherit;text-align:center;font-size:10.5px;}
+.fotos img{width:130px;height:130px;object-fit:cover;border:1px solid var(--border);border-radius:8px;display:block;}
+.notas{border:1px solid var(--border);border-radius:8px;padding:12px;min-height:150px;background:repeating-linear-gradient(#fff,#fff 27px,#eef0f2 28px);}
+.foot{margin-top:18px;border-top:1px solid var(--border);padding-top:8px;color:var(--text-muted);font-size:10px;display:flex;justify-content:space-between;}
+@media print{
+  @page{size:A4;margin:12mm;}
+  .no-print{display:none!important;}
+  .page{padding:0;max-width:none;}
+  .section{break-inside:avoid;}
+  table.mov-table{break-inside:auto;}
+  a[href]:after{content:'';}
+}
+.bar{position:fixed;top:0;left:0;right:0;background:#18181B;color:#fff;padding:8px 14px;display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;z-index:99;}
+.bar button{background:var(--accent);color:#111;border:none;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.bar .sec{background:#3f3f46;color:#fff;}
+body{padding-top:0;}
+@media screen{.page{padding-top:52px;}}
+</style></head>
+<body>
+<div class="bar no-print">📄 Pré-visualização da folha de estudo &nbsp;
+  <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <button class="sec" onclick="window.close()">Fechar</button>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <div class="brand">ritmoprod.<small>Curva ABC · Estudo de Modelo</small></div>
+    </div>
+    <div class="doc-meta">Emitido em ${esc(dataStr)}${baseTxt?'<br>Base consolidada: '+esc(baseTxt):''}</div>
+  </div>
+  <h1>${esc(nome)}</h1>
+  <div class="sub"><span class="tag">Cód. ${esc(codigo)}</span>${a&&a.meses&&a.meses.length?'<span class="tag">Meses: '+esc(a.meses.join(', '))+'</span>':''}</div>
+
+  ${veredictoHTML?`<div class="section"><div class="st">Situação e veredito</div><div class="verd">${veredictoHTML}</div></div>`:''}
+
+  ${indHTML?`<div class="section"><div class="st">Indicadores &amp; canibalização</div>${indHTML}</div>`:''}
+
+  ${resumo?`<div class="section"><div class="st">Resumo executivo</div><div class="resumo">${resumo}</div></div>`:''}
+
+  ${tabelaHTML?`<div class="section"><div class="st">Faturamento por cor — mês a mês (R$ e unidades)</div>${tabelaHTML}</div>`:''}
+
+  ${fotosHTML?`<div class="section"><div class="st">Cores do modelo</div><div class="fotos">${fotosHTML}</div></div>`:''}
+
+  <div class="section"><div class="st">Anotações do estudo</div><div class="notas"></div></div>
+
+  <div class="foot"><span>ritmoprod. · Curva ABC</span><span>${esc(nome)} · ${esc(codigo)}</span></div>
+</div>
+<script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();}catch(e){}},200);});<\/script>
+</body></html>`;
+  w.document.open();w.document.write(doc);w.document.close();
 }
 function toggleModAudit(){
   const p=document.getElementById('mod-audit-panel');
