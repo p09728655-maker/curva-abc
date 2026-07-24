@@ -4818,6 +4818,25 @@ function renderModAudit(){
     h+=row('Incremento líquido:',fmtBRL(a.lancamento.incremento));
   }
   h+=`</div>`;
+  // Explicação: como a canibalização é medida (transparência sobre o método)
+  if(a.lancamento){
+    h+=`<details style="border-top:1px solid var(--border,#334155);padding-top:.6rem;margin-bottom:.6rem;">`
+      +`<summary style="cursor:pointer;font-weight:700;color:var(--accent);list-style:none;">❓ Como a canibalização é medida</summary>`
+      +`<div style="color:var(--text-muted);line-height:1.5;font-size:.8rem;margin-top:.5rem;">`
+      +`<p style="margin:.2rem 0;"><strong>O que é:</strong> canibalização ocorre quando uma <strong>cor nova</strong> vende principalmente para clientes que antes comprariam outra cor da mesma família. Nesse caso, parte do faturamento não é crescimento — é apenas migração entre cores.</p>`
+      +`<p style="margin:.5rem 0 .2rem;"><strong>Como o sistema estima:</strong></p>`
+      +`<span style="display:block;">1. Marca o mês de lançamento (estreia da 1ª cor nova) e divide a série em pré e pós.</span>`
+      +`<span style="display:block;">2. Soma o faturamento das cores novas no período pós (<em>venda das cores novas</em>).</span>`
+      +`<span style="display:block;">3. Para cada cor existente, compara a média mensal pré vs pós; só as quedas entram (<em>perda das existentes</em>).</span>`
+      +`<span style="display:block;">4. Índice = perda das existentes ÷ venda das cores novas — a fração da venda nova que apenas repôs o que as antigas perderam.</span>`
+      +`<span style="display:block;">5. Em paralelo, verifica se a <strong>família como um todo</strong> cresceu (média pós vs pré). Se não cresceu, o veredito é "Sem crescimento", não canibalização.</span>`
+      +`<p style="margin:.5rem 0 .2rem;"><strong>Como interpretar o índice:</strong></p>`
+      +`<span style="display:block;">🟢 <strong>&lt; 30%</strong>: a maior parte é venda nova (crescimento real).</span>`
+      +`<span style="display:block;">🟡 <strong>30%–70%</strong>: coexistência entre crescimento e migração.</span>`
+      +`<span style="display:block;">🔴 <strong>&gt; 70%</strong>: boa parte apenas migrou entre cores.</span>`
+      +`<p style="margin:.5rem 0 .2rem;"><strong>Limitações:</strong> é uma estimativa a partir do faturamento histórico e atribui toda a queda das cores antigas ao lançamento. A queda também pode vir de <strong>sazonalidade, preço, estoque, demanda ou mercado</strong>. O índice aponta indícios e ordem de grandeza — não prova causa e efeito — e sua confiança depende do histórico pós-lançamento (${a.confianca}).</p>`
+      +`</div></details>`;
+  }
   // Oportunidade comercial
   if(a.oportunidade){
     const o=a.oportunidade;
