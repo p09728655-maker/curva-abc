@@ -1029,6 +1029,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
         <label style="font-size:.78rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:.35rem;"><input type="checkbox" id="mod-debug-chk" onchange="toggleModDebug()"> Exibir detalhes técnicos do cálculo</label>
       </div>
       <div id="mod-audit-panel" style="display:none;background:var(--surface2,#1e293b);border:1px solid var(--border,#334155);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.83rem;line-height:1.55;"></div>
+      <div id="est-box" style="background:var(--surface2,#1e293b);border:1px solid var(--border,#334155);border-radius:8px;padding:.9rem 1.1rem;margin-bottom:1rem;">
+        <div style="display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;">
+          <span style="font-weight:800;font-size:.88rem;">🔮 Estimativa de cor nova</span>
+          <span style="font-size:.78rem;color:var(--text-muted);">Chance de uma cor candidata dar certo neste modelo, a partir do histórico interno do portfólio.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;">
+          <span class="mov-label">Cor candidata:</span>
+          <select id="est-cor-select" onchange="renderEstimativa()" style="min-width:300px;max-width:100%;padding:.4rem .6rem;background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"><option value="">— selecione uma cor —</option></select>
+        </div>
+        <div id="est-result" style="margin-top:.7rem;"></div>
+      </div>
       <div id="mod-content" style="overflow-x:auto;"></div>
     </section>
 
@@ -4453,6 +4464,33 @@ function _redistribIndex(m,meses){
 }
 // Estado de auditoria do último veredito calculado (rastreabilidade total)
 let _MOD_AUDIT=null;
+// Cálculo de canibalização financeira de um lançamento de cor.
+// Fonte única: usado tanto pelo veredito do modelo quanto pela taxa-base
+// histórica que alimenta a estimativa de cor nova.
+//   vendaNovas      = faturamento das cores novas nos meses em que existiram
+//   perdaExistentes = queda da média por cor existente, projetada no pós
+//   incremento      = vendaNovas − perdaExistentes
+//   taxaCanib       = perdaExistentes ÷ vendaNovas
+function _canibCalc(existentes,novasCores,meses,entryIdx){
+  const preMeses=meses.slice(0,entryIdx);
+  const posMeses=meses.slice(entryIdx);
+  let vendaNovas=0;
+  for(const c of novasCores){
+    for(const mes of meses.slice(c.firstIdx)) vendaNovas+=(c.porMes[mes]||0);
+  }
+  let perdaExistentes=0;
+  if(preMeses.length>0&&posMeses.length>0){
+    for(const c of existentes){
+      const antes=preMeses.reduce((s,mes)=>s+(c.porMes[mes]||0),0)/preMeses.length;
+      const depois=posMeses.reduce((s,mes)=>s+(c.porMes[mes]||0),0)/posMeses.length;
+      const perda=(antes-depois)*posMeses.length;
+      if(perda>0) perdaExistentes+=perda;
+    }
+  }
+  const incremento=vendaNovas-perdaExistentes;
+  const taxaCanib=vendaNovas>0?perdaExistentes/vendaNovas:0;
+  return {preMeses,posMeses,vendaNovas,perdaExistentes,incremento,taxaCanib};
+}
 // Faixas de Canibalização Financeira (índice = redução do faturamento das
 // cores existentes ÷ faturamento das novas cores).
 function _canibFin(pct){
@@ -4638,25 +4676,7 @@ function _modVerdict(m,meses,ctx){
   }
   // Entry point: earliest month any new color appeared
   const entryIdx=Math.min(...novasCores.map(c=>c.firstIdx));
-  const preMeses=meses.slice(0,entryIdx);
-  const posMeses=meses.slice(entryIdx);
-  // Revenue of new colors in post-period
-  let vendaNovas=0;
-  for(const c of novasCores){
-    for(const mes of meses.slice(c.firstIdx)) vendaNovas+=(c.porMes[mes]||0);
-  }
-  // Loss of existing colors: avg before vs avg after entry
-  let perdaExistentes=0;
-  if(preMeses.length>0&&posMeses.length>0){
-    for(const c of existentes){
-      const antes=preMeses.reduce((s,mes)=>s+(c.porMes[mes]||0),0)/preMeses.length;
-      const depois=posMeses.reduce((s,mes)=>s+(c.porMes[mes]||0),0)/posMeses.length;
-      const perda=(antes-depois)*posMeses.length;
-      if(perda>0) perdaExistentes+=perda;
-    }
-  }
-  const incremento=vendaNovas-perdaExistentes;
-  const taxaCanib=vendaNovas>0?perdaExistentes/vendaNovas:0;
+  const {preMeses,posMeses,vendaNovas,perdaExistentes,incremento,taxaCanib}=_canibCalc(existentes,novasCores,meses,entryIdx);
   const pctCanib=(taxaCanib*100).toFixed(0);
   const nStr=`${novasCores.length} cor${novasCores.length>1?'es':''} nova${novasCores.length>1?'s':''}`;
   const lancamento=meses[entryIdx];
@@ -4693,6 +4713,345 @@ function _modVerdict(m,meses,ctx){
   };
   return`<span style="color:${_bd.cor}">${_bd.emoji} ${_bd.txt}</span>${l2}${l3}`;
 }
+// ====================================================================
+// ESTIMATIVA DE COR NOVA
+// Probabilidade a priori de uma cor candidata dar certo num modelo que
+// já está em linha.
+//
+// Não é um modelo treinado nem previsão de mercado: é evidência interna
+// da própria base, combinada de forma explícita e auditável. Três fontes:
+//   1. Histórico da própria cor no portfólio — o código do produto é
+//      família(3)+modelo(3)+cor(3), então o sufixo da cor é dimensão de
+//      catálogo e a mesma cor aparece em dezenas de modelos. Sinal forte.
+//   2. Evidência dentro da mesma família (peso 1,5× por observação).
+//   3. Taxa-base: de todos os lançamentos de cor observados na base,
+//      quantos deram certo. É o denominador honesto — sem ele qualquer
+//      número seria chute com casa decimal.
+//
+// A combinação é Beta-binomial: a faixa publicada reflete o tamanho real
+// da amostra. Com pouca base, a faixa fica larga — de propósito.
+// ====================================================================
+
+// Share mínimo do faturamento do modelo para a cor contar como "deu certo".
+// Num modelo de 5 cores a divisão igualitária seria 20%; 12% é o piso de
+// "se paga sem ser marginal".
+const EST_LIMIAR_SHARE=0.12;
+// Tolerância de queda: a cor pode recuar até 15% na 2ª metade da série e
+// ainda contar como bem-sucedida (oscilação normal ≠ fracasso).
+const EST_TOL_QUEDA=-0.15;
+// Faixa publicada em 80% de credibilidade (z = 1,2816).
+const EST_Z=1.2816;
+// Peso extra das observações da mesma família sobre as do resto do portfólio.
+const EST_PESO_FAMILIA=1.5;
+
+// Agrupamento de paleta — usado só para sinalizar quando a candidata
+// estreia uma paleta que o modelo ainda não vende. É ressalva de confiança,
+// não ajuste de probabilidade.
+const EST_PALETAS=[
+  ['Neutro claro',/\b(BRANCO|OFF ?WHITE|WHITE|PEROLA|GELO|MARFIM)\b/],
+  ['Neutro escuro',/\b(PRETO|GRAFITE|CHUMBO|CINZA|ONIX|FUME)\b/],
+  ['Madeirado',/\b(CINAMOMO|FREIJO|CARVALHO|NOGUEIRA|IPE|TABACO|CAFE|AMENDOA|NATURAL|NATURE|MEL|IMBUIA|CUMARU|AVELA|CASTANHO|RUSTIC|MADEIRA|NOZES)\b/],
+  ['Colorido',/\b(ROSA|AZUL|VERDE|AMARELO|VERMELHO|BEGE|TERRACOTA|LILAS|SALMAO|MARSALA)\b/]
+];
+function _paletaGrupo(label){
+  const s=String(label||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  for(const [nome,re] of EST_PALETAS) if(re.test(s)) return nome;
+  return 'Outros';
+}
+function _quant(arr,q){
+  if(!arr||!arr.length)return 0;
+  const a=[...arr].sort((x,y)=>x-y);
+  const i=(a.length-1)*q, lo=Math.floor(i), hi=Math.ceil(i);
+  return lo===hi?a[lo]:a[lo]+(a[hi]-a[lo])*(i-lo);
+}
+// Tendência relativa de uma série de cor: média da 2ª metade vs 1ª metade.
+function _tendSerie(c,meses){
+  const half=Math.max(1,Math.floor(meses.length/2));
+  const preM=meses.slice(0,half), posM=meses.slice(half);
+  const pre=preM.reduce((s,x)=>s+(c.porMes[x]||0),0)/preM.length;
+  const pos=posM.length?posM.reduce((s,x)=>s+(c.porMes[x]||0),0)/posM.length:0;
+  if(pre<=0) return pos>0?1:0;
+  return (pos-pre)/pre;
+}
+
+// Índice do catálogo de cores: onde cada código de cor aparece no portfólio,
+// com que participação e em que tendência.
+function buildCatalogoCores(){
+  const {meses,models}=buildModelos();
+  const catalogo=new Map();   // cod3 -> {cod,label,rotulos,ocorr:[]}
+  const porModelo=new Map();  // modelKey -> {tot,cores:[]}
+  for(const m of models.values()){
+    const cores=[...m.cores.values()];
+    const prefix=_commonPrefixWords(cores.map(c=>c.desc));
+    const tot=meses.reduce((s,x)=>s+(m.totalMes[x]||0),0);
+    if(tot<=0) continue;
+    const lista=[];
+    for(const c of cores){
+      const fat=meses.reduce((s,x)=>s+(c.porMes[x]||0),0);
+      if(fat<=0) continue;
+      const cod3=c.cod.slice(6)||c.cod;
+      const label=_colorLabel(c.desc,prefix);
+      const share=fat/tot, tend=_tendSerie(c,meses);
+      lista.push({cod3,label,share,tend,fat});
+      let e=catalogo.get(cod3);
+      if(!e){e={cod:cod3,label,rotulos:new Map(),ocorr:[]};catalogo.set(cod3,e);}
+      e.rotulos.set(label,(e.rotulos.get(label)||0)+1);
+      e.ocorr.push({modelKey:m.key,famKey:m.key.slice(0,3),share,tend,fat});
+    }
+    porModelo.set(m.key,{tot,cores:lista});
+  }
+  // o rótulo mais frequente vira o nome da cor
+  for(const e of catalogo.values()){
+    let best='',n=-1;
+    for(const [k,v] of e.rotulos) if(v>n){n=v;best=k;}
+    e.label=best||e.cod;
+  }
+  return {meses,models,catalogo,porModelo};
+}
+
+// Taxa-base: varre todo o portfólio atrás de cores que entraram depois do
+// 1º mês e mede o desfecho de cada uma.
+function _lancamentosHistoricos(meses,models){
+  const casos=[], canibs=[];
+  if(meses.length<3) return {casos,canibs,n:0,sucessos:0,taxaBase:null};
+  for(const m of models.values()){
+    const cores=[...m.cores.values()];
+    const prefix=_commonPrefixWords(cores.map(c=>c.desc));
+    const existentes=[], novas=[];
+    for(const c of cores){
+      const firstIdx=meses.findIndex(x=>(c.porMes[x]||0)>0);
+      if(firstIdx===0) existentes.push(c);
+      else if(firstIdx>0) novas.push({...c,firstIdx});
+    }
+    if(!novas.length) continue;
+    const entryIdx=Math.min(...novas.map(c=>c.firstIdx));
+    const cc=_canibCalc(existentes,novas,meses,entryIdx);
+    if(cc.vendaNovas>0&&cc.preMeses.length>0&&cc.posMeses.length>=2) canibs.push(cc.taxaCanib);
+    for(const c of novas){
+      const pos=meses.slice(c.firstIdx);
+      if(pos.length<2) continue;  // entrou no último mês — sem histórico p/ julgar
+      const fatCor=pos.reduce((s,x)=>s+(c.porMes[x]||0),0);
+      const fatMod=pos.reduce((s,x)=>s+(m.totalMes[x]||0),0);
+      if(fatMod<=0) continue;
+      const share=fatCor/fatMod, tend=_tendSerie(c,pos);
+      casos.push({modelKey:m.key,famKey:m.key.slice(0,3),cod3:c.cod.slice(6)||c.cod,
+        label:_colorLabel(c.desc,prefix),share,tend,mesesPos:pos.length,
+        sucesso:share>=EST_LIMIAR_SHARE&&tend>=EST_TOL_QUEDA});
+    }
+  }
+  const n=casos.length, sucessos=casos.filter(c=>c.sucesso).length;
+  return {casos,canibs,n,sucessos,taxaBase:n?sucessos/n:null};
+}
+
+// Estimativa para uma cor candidata num modelo. Devolve tudo aberto —
+// cada peça da evidência é exibida e auditável.
+function estimarCorNova(modelKey,cod3){
+  const {meses,models,catalogo,porModelo}=buildCatalogoCores();
+  const m=models.get(modelKey), cat=catalogo.get(cod3);
+  if(!m||!cat||meses.length<2) return null;
+  const famKey=modelKey.slice(0,3);
+
+  // ── 1. taxa-base de lançamentos observados na base ──
+  const lanc=_lancamentosHistoricos(meses,models);
+  const temBase=lanc.n>=3;
+  const p0=temBase?lanc.taxaBase:0.5;          // sem amostra, parte do neutro
+  const w0=temBase?Math.min(lanc.n,10):2;      // e com força quase nula
+  let A=w0*p0, B=w0*(1-p0);
+
+  // ── 2. histórico da própria cor, fora deste modelo ──
+  const oc=cat.ocorr.filter(o=>o.modelKey!==modelKey);
+  const ocFam=oc.filter(o=>o.famKey===famKey);
+  const ocGer=oc.filter(o=>o.famKey!==famKey);   // sem sobreposição: nada conta 2×
+  const relev=o=>o.share>=EST_LIMIAR_SHARE&&o.tend>=EST_TOL_QUEDA;
+  const nGer=ocGer.length, nRelGer=ocGer.filter(relev).length;
+  const wGer=Math.min(nGer,12);
+  if(nGer){const pg=nRelGer/nGer;A+=wGer*pg;B+=wGer*(1-pg);}
+
+  // ── 3. evidência da mesma família (mais específica → pesa mais) ──
+  const nFam=ocFam.length, nRelFam=ocFam.filter(relev).length;
+  const wFam=Math.min(nFam*EST_PESO_FAMILIA,9);
+  if(nFam){const pf=nRelFam/nFam;A+=wFam*pf;B+=wFam*(1-pf);}
+
+  // ── posterior ──
+  const p=A/(A+B);
+  const sd=Math.sqrt(A*B/((A+B)*(A+B)*(A+B+1)));
+  const lo=Math.max(0,p-EST_Z*sd), hi=Math.min(1,p+EST_Z*sd);
+
+  // ── paleta: a candidata estreia um grupo que o modelo não vende? ──
+  const coresMod=(porModelo.get(modelKey)||{cores:[]}).cores;
+  const grupoCand=_paletaGrupo(cat.label);
+  let shareGrupo=0;
+  const gruposMod=new Map();
+  for(const c of coresMod){
+    const g=_paletaGrupo(c.label);
+    gruposMod.set(g,(gruposMod.get(g)||0)+c.share);
+  }
+  shareGrupo=gruposMod.get(grupoCand)||0;
+  const paletaInedita=shareGrupo<0.02;
+
+  // ── faturamento esperado ──
+  // Participação típica da cor onde ela já existe, projetada sobre o
+  // faturamento mensal recente do modelo. s/(1−s) porque o share é medido
+  // sobre um total que já inclui a própria cor.
+  const shares=oc.map(o=>o.share);
+  const sMed=_quant(shares,0.5), sP25=_quant(shares,0.25), sP75=_quant(shares,0.75);
+  const nUlt=Math.min(3,meses.length);
+  const fatMesAtual=meses.slice(-nUlt).reduce((s,x)=>s+(m.totalMes[x]||0),0)/nUlt;
+  const proj=s=>(s>0&&s<0.9)?fatMesAtual*s/(1-s):0;
+  const fatEsp=proj(sMed), fatEspLo=proj(sP25), fatEspHi=proj(sP75);
+
+  // ── canibalização esperada (mediana dos lançamentos da base) ──
+  const canibEsp=lanc.canibs.length>=3?_quant(lanc.canibs,0.5):null;
+  const incrEsp=canibEsp!=null?fatEsp*(1-canibEsp):null;
+
+  // ── confiança ──
+  let pts=0;
+  if(meses.length>=6)pts++;
+  if(meses.length>=9)pts++;
+  if(lanc.n>=8)pts++;
+  if(lanc.n>=20)pts++;
+  if(oc.length>=5)pts++;
+  if(oc.length>=15)pts++;
+  if(nFam>=2)pts++;
+  if(paletaInedita)pts--;
+  const confianca=pts>=5?'Alta':pts>=3?'Média':'Baixa';
+
+  const bd=p>=0.65?{emoji:'🟢',txt:'Forte indício de acerto',cor:'#4ade80'}
+         :p>=0.45?{emoji:'🟡',txt:'Indício moderado',cor:'#fbbf24'}
+         :p>=0.30?{emoji:'🟠',txt:'Indício fraco',cor:'#fb923c'}
+         :{emoji:'🔴',txt:'Indício contrário',cor:'#f87171'};
+  // Com evidência fraca a estimativa tende à taxa-base: o veredito precisa
+  // dizer isso, senão um 50% "neutro" é lido como aval.
+  if(confianca==='Baixa'){bd.emoji='⚪';bd.txt+=' — evidência fraca, tratar como hipótese';bd.cor='#94a3b8';}
+
+  // ── ressalvas: o que o dado não sabe ──
+  const ressalvas=[];
+  if(!temBase) ressalvas.push('A base tem menos de 3 lançamentos de cor observados — não há taxa-base confiável. A estimativa vem quase toda do histórico da cor no portfólio.');
+  if(oc.length<3) ressalvas.push(`Esta cor aparece em apenas ${oc.length} outro${oc.length===1?'':'s'} modelo${oc.length===1?'':'s'} do portfólio — amostra pequena, faixa larga.`);
+  if(nFam===0) ressalvas.push(`Nenhum modelo da família ${famKey} vende esta cor hoje. A evidência vem de outras famílias, que podem ter público diferente.`);
+  if(paletaInedita) ressalvas.push(`O modelo não vende nada da paleta "${grupoCand}" hoje — a candidata estreia essa paleta aqui. Isso derruba a confiança da estimativa.`);
+  if(canibEsp==null) ressalvas.push('Sem lançamentos suficientes na base para estimar canibalização. O faturamento projetado é bruto, sem desconto da perda das cores existentes.');
+  ressalvas.push('A Curva ABC não registra preço praticado, exposição em catálogo, mostruário, campanha nem estoque — e não registra quando a cor passou a ser ofertada. Uma cor pode aparecer como fracasso no dado só porque nunca foi disponibilizada. Ausência de venda não é ausência de demanda.');
+
+  const est={
+    modelKey,modelo:_commonPrefixWords(m.descs)||('Modelo '+m.key),famKey,
+    cod3,cor:cat.label,grupoCand,
+    p,lo,hi,badge:bd,confianca,pontosConf:pts,
+    limiar:EST_LIMIAR_SHARE,tolQueda:EST_TOL_QUEDA,
+    base:{n:lanc.n,sucessos:lanc.sucessos,taxa:lanc.taxaBase,usada:temBase,peso:w0},
+    geral:{n:nGer,relevantes:nRelGer,peso:wGer},
+    familia:{n:nFam,relevantes:nRelFam,peso:wFam,ocorr:ocFam},
+    portfolio:{n:oc.length,shareMediano:sMed,shareP25:sP25,shareP75:sP75,
+      crescendo:oc.filter(o=>o.tend>0.1).length,ocorr:oc},
+    paleta:{grupo:grupoCand,shareNoModelo:shareGrupo,inedita:paletaInedita,
+      gruposModelo:[...gruposMod.entries()].sort((a,b)=>b[1]-a[1])},
+    projecao:{fatMesAtual,fatEsp,fatEspLo,fatEspHi,canibEsp,incrEsp,nUlt},
+    meses:meses.slice(),
+    posterior:{A,B,sd},
+    ressalvas
+  };
+  const pf=v=>(v*100).toFixed(0)+'%';
+  est.resumo=`Com base no histórico interno, ${cat.label} tem probabilidade estimada de ${pf(p)} `
+    +`(faixa ${pf(lo)}–${pf(hi)}, confiança ${confianca.toLowerCase()}) de dar certo em ${est.modelo}. `
+    +`A cor aparece hoje em ${oc.length} outro${oc.length===1?'':'s'} modelo${oc.length===1?'':'s'}, `
+    +`onde segura participação mediana de ${pf(sMed)} do faturamento`
+    +(nFam?` — ${nRelFam} de ${nFam} desses casos estão dentro da própria família ${famKey} com desempenho relevante`:` — nenhum deles na família ${famKey}`)
+    +`. A taxa-base do portfólio é ${temBase?`${pf(lanc.taxaBase)} (${lanc.sucessos} de ${lanc.n} lançamentos de cor observados)`:'indisponível (menos de 3 lançamentos na base)'}. `
+    +`Projeção de faturamento: ${fmtBRL(fatEsp)}/mês`
+    +(incrEsp!=null?`, ou ${fmtBRL(incrEsp)}/mês de incremento líquido após descontar a canibalização mediana de ${pf(canibEsp)}`:' (bruto, sem desconto de canibalização)')
+    +`. Estimativa é indício com ordem de grandeza, não previsão.`;
+  return est;
+}
+
+// Estado da última estimativa calculada (usado pela impressão)
+let _MOD_EST=null;
+
+function populateEstSelect(modelKey){
+  const sel=document.getElementById('est-cor-select');
+  if(!sel)return;
+  const {catalogo,porModelo}=buildCatalogoCores();
+  const tem=new Set(((porModelo.get(modelKey)||{cores:[]}).cores).map(c=>c.cod3));
+  const cand=[...catalogo.values()].filter(e=>!tem.has(e.cod))
+    .sort((a,b)=>b.ocorr.length-a.ocorr.length||a.label.localeCompare(b.label));
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— selecione uma cor —</option>'
+    +cand.map(e=>`<option value="${e.cod}">${e.cod} · ${e.label} (${e.ocorr.length} modelo${e.ocorr.length===1?'':'s'})</option>`).join('');
+  if(prev&&cand.some(e=>e.cod===prev))sel.value=prev;
+  renderEstimativa();
+}
+
+function renderEstimativa(){
+  const sel=document.getElementById('est-cor-select');
+  const out=document.getElementById('est-result');
+  const modSel=document.getElementById('mod-select');
+  if(!sel||!out||!modSel)return;
+  const cod3=sel.value;
+  if(!cod3){
+    _MOD_EST=null;
+    out.innerHTML='<span style="color:var(--text-muted);font-size:.8rem;">Escolha uma cor do catálogo para estimar. A lista traz só cores que este modelo ainda não tem, ordenadas pela presença no portfólio.</span>';
+    return;
+  }
+  const est=estimarCorNova(modSel.value,cod3);
+  _MOD_EST=est;
+  if(!est){out.innerHTML='<span style="color:var(--text-muted);font-size:.8rem;">Dados insuficientes para estimar (mínimo de 2 meses).</span>';return;}
+  const pf=v=>(v*100).toFixed(0)+'%';
+  const row=(k,v,cor)=>`<div style="display:grid;grid-template-columns:1fr auto;gap:.15rem .9rem;font-size:.78rem;align-items:baseline;margin-top:.1rem;"><span style="color:var(--text-muted)">${k}</span><span style="font-weight:600;text-align:right;color:${cor||'var(--text)'}">${v}</span></div>`;
+  const head=t=>`<span style="display:block;font-weight:700;font-size:.7rem;letter-spacing:.06em;color:var(--text-muted);margin:.5rem 0 .2rem;opacity:.85;">${t}</span>`;
+  const confCor=est.confianca==='Alta'?'#4ade80':est.confianca==='Média'?'#fbbf24':'#f87171';
+
+  let h='<div style="display:flex;flex-wrap:wrap;gap:.8rem 2.2rem;align-items:flex-start;">';
+  // coluna 1 — resultado
+  h+='<div style="min-width:240px;flex:0 0 auto;">';
+  h+=`<span style="display:block;font-size:.95rem;font-weight:800;color:${est.badge.cor};">${est.badge.emoji} ${est.badge.txt}</span>`;
+  h+=`<span style="display:block;font-size:1.5rem;font-weight:800;margin:.15rem 0 0;">${pf(est.p)}</span>`;
+  h+=`<span style="display:block;font-size:.76rem;color:var(--text-muted);">faixa ${pf(est.lo)}–${pf(est.hi)} (80% de credibilidade)</span>`;
+  h+=head('CONTEXTO');
+  h+=row('Cor candidata:',`${est.cod3} · ${est.cor}`);
+  h+=row('Paleta:',est.paleta.grupo+(est.paleta.inedita?' ⚠️ inédita aqui':''),est.paleta.inedita?'#fb923c':null);
+  h+=row('Confiança:',est.confianca,confCor);
+  h+='</div>';
+  // coluna 2 — evidência
+  h+='<div style="min-width:300px;flex:1 1 300px;">';
+  h+=head('EVIDÊNCIA');
+  h+=row('A cor existe em:',`${est.portfolio.n} outro${est.portfolio.n===1?'':'s'} modelo${est.portfolio.n===1?'':'s'}`);
+  h+=row('Participação mediana lá:',pf(est.portfolio.shareMediano));
+  h+=row('Em crescimento em:',`${est.portfolio.crescendo} de ${est.portfolio.n}`);
+  h+=row(`Na família ${est.famKey}:`,est.familia.n?`${est.familia.relevantes}/${est.familia.n} com bom desempenho`:'não existe hoje',est.familia.n?null:'#fb923c');
+  h+=row('Taxa-base do portfólio:',est.base.usada?`${pf(est.base.taxa)} (${est.base.sucessos}/${est.base.n} lançamentos)`:'amostra insuficiente',est.base.usada?null:'#fb923c');
+  h+='</div>';
+  // coluna 3 — projeção
+  h+='<div style="min-width:300px;flex:1 1 300px;">';
+  h+=head('PROJEÇÃO FINANCEIRA');
+  h+=row('Faturamento do modelo:',`${fmtBRL(est.projecao.fatMesAtual)}/mês`);
+  h+=row('Faturamento da cor nova:',`${fmtBRL(est.projecao.fatEsp)}/mês`,'#60a5fa');
+  h+=row('Cenário conserv. → otimista:',`${fmtBRL(est.projecao.fatEspLo)} → ${fmtBRL(est.projecao.fatEspHi)}`);
+  if(est.projecao.canibEsp!=null){
+    h+=row('Canibalização esperada:',pf(est.projecao.canibEsp));
+    h+=row('Incremento líquido:',`${fmtBRL(est.projecao.incrEsp)}/mês`,'#4ade80');
+  }else{
+    h+=row('Canibalização esperada:','não estimável','#fb923c');
+  }
+  h+='</div>';
+  h+='</div>';
+  // ressalvas + método
+  h+=`<details style="margin-top:.7rem;border-top:1px solid var(--border,#334155);padding-top:.5rem;">`
+    +`<summary style="cursor:pointer;font-weight:700;font-size:.8rem;color:var(--accent);list-style:none;">🔍 Como esta estimativa foi calculada — e o que ela não sabe</summary>`
+    +`<div style="font-size:.78rem;color:var(--text-muted);line-height:1.55;margin-top:.5rem;">`
+    +`<p style="margin:.2rem 0;"><strong style="color:var(--text)">O que é.</strong> Não é previsão de mercado nem modelo treinado: é a evidência da própria base combinada de forma explícita. A conta parte da taxa-base de lançamentos do portfólio e é corrigida pelo histórico da cor candidata em outros modelos.</p>`
+    +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Critério de "deu certo".</strong> Uma cor conta como bem-sucedida quando segura pelo menos ${pf(est.limiar)} do faturamento do modelo e não está caindo mais de ${pf(Math.abs(est.tolQueda))} na 2ª metade da série.</p>`
+    +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Como as três fontes entram.</strong></p>`
+    +`<span style="display:block;">1. Taxa-base: ${est.base.usada?`${est.base.sucessos} de ${est.base.n} lançamentos deram certo (${pf(est.base.taxa)})`:'sem amostra suficiente — entra como neutro (50%)'}, com peso ${est.base.peso.toFixed(1)}.</span>`
+    +`<span style="display:block;">2. Fora da família: ${est.geral.relevantes} de ${est.geral.n} modelos com bom desempenho, com peso ${est.geral.peso.toFixed(1)}.</span>`
+    +`<span style="display:block;">3. Mesma família ${est.famKey}: ${est.familia.relevantes} de ${est.familia.n} casos, com peso ${est.familia.peso.toFixed(1)} (observação da própria família pesa ${EST_PESO_FAMILIA}× mais).</span>`
+    +`<span style="display:block;margin-top:.2rem;">As três viram uma distribuição Beta(${est.posterior.A.toFixed(2)}; ${est.posterior.B.toFixed(2)}). A probabilidade publicada é a média dessa distribuição e a faixa é o intervalo de 80%. Amostra pequena ⇒ faixa larga, por construção.</span>`
+    +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Projeção financeira.</strong> Participação mediana da cor onde ela já existe (${pf(est.portfolio.shareMediano)}) aplicada sobre o faturamento médio dos últimos ${est.projecao.nUlt} ${est.projecao.nUlt>1?'meses':'mês'} do modelo. A canibalização esperada é a mediana observada nos lançamentos da base e desconta do bruto para chegar ao incremento líquido.</p>`
+    +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Limitações.</strong></p>`
+    +est.ressalvas.map(r=>`<span style="display:block;">• ${r}</span>`).join('')
+    +`<p style="margin:.5rem 0 0;font-style:italic;">A estimativa indica ordem de grandeza e direção. Não prova causa e efeito e não substitui teste comercial.</p>`
+    +`</div></details>`;
+  out.innerHTML=h;
+}
+
 function renderModelosTab(){
   const sel=document.getElementById('mod-select');
   const content=document.getElementById('mod-content');
@@ -4786,6 +5145,8 @@ function renderModelosTab(){
   // Atualiza painel de auditoria se estiver aberto
   const auditPanel=document.getElementById('mod-audit-panel');
   if(auditPanel&&auditPanel.style.display!=='none')renderModAudit();
+  // Recarrega as cores candidatas do modelo selecionado
+  try{populateEstSelect(cur.key);}catch(e){}
 }
 // ── Impressão: folha de estudo do modelo selecionado (Modelos/Cores) ──
 function printModelo(){
@@ -4840,6 +5201,35 @@ function printModelo(){
     indHTML+=`</tbody></table>`;
   }
   const resumo=(a&&a.resumo)?a.resumo:'';
+  // Bloco de estimativa de cor nova (só sai quando há uma cor selecionada)
+  const est=_MOD_EST;
+  let estHTML='', estResumo='', estRessalvas='';
+  if(est){
+    const pf=v=>(v*100).toFixed(0)+'%';
+    estHTML+=`<table class="kv"><tbody>`;
+    estHTML+=row('Cor candidata',`${est.cod3} · ${est.cor} (paleta ${est.paleta.grupo}${est.paleta.inedita?' — inédita neste modelo':''})`);
+    estHTML+=row('Veredito',`${est.badge.emoji} ${est.badge.txt}`);
+    estHTML+=row('Probabilidade estimada',`${pf(est.p)} — faixa ${pf(est.lo)}–${pf(est.hi)} (80%)`);
+    estHTML+=row('Confiança',est.confianca);
+    estHTML+=row('Critério de sucesso',`participação ≥ ${pf(est.limiar)} do modelo, sem queda maior que ${pf(Math.abs(est.tolQueda))}`);
+    estHTML+=row('A cor existe em',`${est.portfolio.n} outro${est.portfolio.n===1?'':'s'} modelo${est.portfolio.n===1?'':'s'} do portfólio`);
+    estHTML+=row('Participação mediana onde existe',pf(est.portfolio.shareMediano));
+    estHTML+=row('Em crescimento em',`${est.portfolio.crescendo} de ${est.portfolio.n} modelos`);
+    estHTML+=row(`Casos na família ${est.famKey}`,est.familia.n?`${est.familia.relevantes} de ${est.familia.n} com bom desempenho`:'a família não vende esta cor hoje');
+    estHTML+=row('Taxa-base de lançamentos',est.base.usada?`${pf(est.base.taxa)} (${est.base.sucessos} de ${est.base.n} lançamentos observados)`:'amostra insuficiente na base');
+    estHTML+=row(`Faturamento do modelo (últimos ${est.projecao.nUlt} ${est.projecao.nUlt>1?'meses':'mês'})`,fmtBRL(est.projecao.fatMesAtual)+'/mês');
+    estHTML+=row('Faturamento projetado da cor nova',fmtBRL(est.projecao.fatEsp)+'/mês');
+    estHTML+=row('Cenário conservador → otimista',`${fmtBRL(est.projecao.fatEspLo)} → ${fmtBRL(est.projecao.fatEspHi)}`);
+    if(est.projecao.canibEsp!=null){
+      estHTML+=row('Canibalização esperada',pf(est.projecao.canibEsp));
+      estHTML+=row('Incremento líquido projetado',fmtBRL(est.projecao.incrEsp)+'/mês');
+    }else{
+      estHTML+=row('Canibalização esperada','não estimável com a base atual');
+    }
+    estHTML+=`</tbody></table>`;
+    estResumo=est.resumo;
+    estRessalvas=est.ressalvas.map(r=>`<span style="display:block;">• ${r}</span>`).join('');
+  }
   const w=window.open('','_blank');
   if(!w){alert('Habilite pop-ups para gerar a impressão.');return;}
   const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -4909,6 +5299,10 @@ body{padding-top:0;}
   ${indHTML?`<div class="section"><div class="st">Indicadores &amp; canibalização financeira</div>${indHTML}</div>`:''}
 
   ${resumo?`<div class="section"><div class="st">Resumo executivo</div><div class="resumo">${resumo}</div></div>`:''}
+
+  ${estHTML?`<div class="section"><div class="st">Estimativa de cor nova — ${esc(est.cor)}</div>${estHTML}
+    <div class="resumo" style="margin-top:8px;">${estResumo}</div>
+    <div style="margin-top:8px;font-size:10.5px;color:var(--text-muted);line-height:1.5;"><strong>Limitações desta estimativa:</strong>${estRessalvas}</div></div>`:''}
 
   ${tabelaHTML?`<div class="section"><div class="st">Faturamento por cor — mês a mês (R$ e unidades)</div>${tabelaHTML}</div>`:''}
 
