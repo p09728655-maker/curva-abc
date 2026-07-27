@@ -1037,7 +1037,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
         <div style="display:flex;align-items:center;gap:.6rem;margin-top:.6rem;flex-wrap:wrap;">
           <span class="mov-label">Cor candidata:</span>
           <select id="est-cor-select" onchange="renderEstimativa()" style="min-width:300px;max-width:100%;padding:.4rem .6rem;background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"><option value="">— selecione uma cor —</option></select>
+          <button id="est-valid-btn" onclick="toggleValidacao()" title="Testa o estimador contra os lançamentos de cor que já aconteceram na base" style="background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;cursor:pointer;font-family:inherit;">📊 O estimador acerta?</button>
+          <span id="est-calib-flag" style="display:none;font-size:.75rem;color:#60a5fa;">⚙️ usando pesos calibrados</span>
         </div>
+        <div id="est-valid-panel" style="display:none;margin-top:.7rem;border-top:1px solid var(--border,#334155);padding-top:.7rem;"></div>
         <div id="est-result" style="margin-top:.7rem;"></div>
       </div>
       <div id="mod-content" style="overflow-x:auto;"></div>
@@ -3968,8 +3971,11 @@ function switchTab(tab){
 // ====================================================================
 // MODELOS / CORES — agrupa por código Família(3)+Modelo(3); cor = 3 últimos
 // ====================================================================
-function buildModelos(){
-  const periodos=PERIODOS;
+// Aceita uma janela de períodos (fatia de PERIODOS) para permitir rodar a
+// análise "como se estivéssemos no mês X" — é o que torna o backtest possível.
+// Sem argumento, comportamento idêntico ao anterior.
+function buildModelos(periodos){
+  periodos=periodos||PERIODOS;
   const meses=periodos.map(p=>p.label);
   const models=new Map();
   for(const p of periodos){
@@ -4744,6 +4750,34 @@ const EST_Z=1.2816;
 // Peso extra das observações da mesma família sobre as do resto do portfólio.
 const EST_PESO_FAMILIA=1.5;
 
+// ── Pesos da combinação de evidência ──
+// Tetos de quantas observações cada fonte pode valer, para que nenhuma
+// sozinha domine a conta. São os únicos parâmetros calibráveis: definem
+// COMO a evidência é combinada, não O QUE conta como sucesso.
+// (O limiar de sucesso é decisão de negócio — calibrá-lo seria circular,
+// porque o algoritmo escolheria a definição que o faz parecer certo.)
+const EST_PESOS_PADRAO={base:10,geral:12,familia:9,fatorFamilia:EST_PESO_FAMILIA};
+const EST_LS_PESOS='est_pesos_calibrados';
+// Mínimo de casos avaliáveis para permitir calibrar. Abaixo disso a busca
+// decora ruído em vez de aprender.
+const EST_MIN_CASOS_CALIB=20;
+// Ganho mínimo no Brier para valer a troca dos pesos padrão (5% relativo).
+const EST_GANHO_MINIMO=0.05;
+
+function estPesos(){
+  try{
+    const s=localStorage.getItem(EST_LS_PESOS);
+    if(s){
+      const p=JSON.parse(s);
+      if(p&&['base','geral','familia','fatorFamilia'].every(k=>typeof p[k]==='number')) return p;
+    }
+  }catch(e){}
+  return Object.assign({},EST_PESOS_PADRAO);
+}
+function estPesosCalibrados(){
+  try{return !!localStorage.getItem(EST_LS_PESOS);}catch(e){return false;}
+}
+
 // Agrupamento de paleta — usado só para sinalizar quando a candidata
 // estreia uma paleta que o modelo ainda não vende. É ressalva de confiança,
 // não ajuste de probabilidade.
@@ -4776,8 +4810,8 @@ function _tendSerie(c,meses){
 
 // Índice do catálogo de cores: onde cada código de cor aparece no portfólio,
 // com que participação e em que tendência.
-function buildCatalogoCores(){
-  const {meses,models}=buildModelos();
+function buildCatalogoCores(periodos){
+  const {meses,models}=buildModelos(periodos);
   const catalogo=new Map();   // cod3 -> {cod,label,rotulos,ocorr:[]}
   const porModelo=new Map();  // modelKey -> {tot,cores:[]}
   for(const m of models.values()){
@@ -4845,8 +4879,9 @@ function _lancamentosHistoricos(meses,models){
 
 // Estimativa para uma cor candidata num modelo. Devolve tudo aberto —
 // cada peça da evidência é exibida e auditável.
-function estimarCorNova(modelKey,cod3){
-  const {meses,models,catalogo,porModelo}=buildCatalogoCores();
+function estimarCorNova(modelKey,cod3,periodos,pesos){
+  const W=pesos||estPesos();
+  const {meses,models,catalogo,porModelo}=buildCatalogoCores(periodos);
   const m=models.get(modelKey), cat=catalogo.get(cod3);
   if(!m||!cat||meses.length<2) return null;
   const famKey=modelKey.slice(0,3);
@@ -4854,8 +4889,8 @@ function estimarCorNova(modelKey,cod3){
   // ── 1. taxa-base de lançamentos observados na base ──
   const lanc=_lancamentosHistoricos(meses,models);
   const temBase=lanc.n>=3;
-  const p0=temBase?lanc.taxaBase:0.5;          // sem amostra, parte do neutro
-  const w0=temBase?Math.min(lanc.n,10):2;      // e com força quase nula
+  const p0=temBase?lanc.taxaBase:0.5;              // sem amostra, parte do neutro
+  const w0=temBase?Math.min(lanc.n,W.base):2;      // e com força quase nula
   let A=w0*p0, B=w0*(1-p0);
 
   // ── 2. histórico da própria cor, fora deste modelo ──
@@ -4864,12 +4899,12 @@ function estimarCorNova(modelKey,cod3){
   const ocGer=oc.filter(o=>o.famKey!==famKey);   // sem sobreposição: nada conta 2×
   const relev=o=>o.share>=EST_LIMIAR_SHARE&&o.tend>=EST_TOL_QUEDA;
   const nGer=ocGer.length, nRelGer=ocGer.filter(relev).length;
-  const wGer=Math.min(nGer,12);
+  const wGer=Math.min(nGer,W.geral);
   if(nGer){const pg=nRelGer/nGer;A+=wGer*pg;B+=wGer*(1-pg);}
 
   // ── 3. evidência da mesma família (mais específica → pesa mais) ──
   const nFam=ocFam.length, nRelFam=ocFam.filter(relev).length;
-  const wFam=Math.min(nFam*EST_PESO_FAMILIA,9);
+  const wFam=Math.min(nFam*W.fatorFamilia,W.familia);
   if(nFam){const pf=nRelFam/nFam;A+=wFam*pf;B+=wFam*(1-pf);}
 
   // ── posterior ──
@@ -4948,6 +4983,7 @@ function estimarCorNova(modelKey,cod3){
     projecao:{fatMesAtual,fatEsp,fatEspLo,fatEspHi,canibEsp,incrEsp,nUlt},
     meses:meses.slice(),
     posterior:{A,B,sd},
+    pesos:W,calibrado:!pesos&&estPesosCalibrados(),
     ressalvas
   };
   const pf=v=>(v*100).toFixed(0)+'%';
@@ -4961,6 +4997,147 @@ function estimarCorNova(modelKey,cod3){
     +(incrEsp!=null?`, ou ${fmtBRL(incrEsp)}/mês de incremento líquido após descontar a canibalização mediana de ${pf(canibEsp)}`:' (bruto, sem desconto de canibalização)')
     +`. Estimativa é indício com ordem de grandeza, não previsão.`;
   return est;
+}
+
+// ====================================================================
+// BACKTEST — o estimador acerta?
+//
+// Para cada cor que já foi lançada na base, pergunta o que o algoritmo
+// teria dito ANTES do lançamento (usando só os meses anteriores) e
+// compara com o que de fato aconteceu depois. Holdout temporal: nenhuma
+// informação do futuro entra na previsão.
+//
+// Sem isto, os parâmetros do estimador são só opinião bem formatada.
+// ====================================================================
+function backtestEstimador(pesos,periodos){
+  periodos=periodos||PERIODOS;
+  const casos=[], excluidos={semCatalogo:0,janelaCurta:0};
+  if(periodos.length<4) return _metricasBacktest(casos,excluidos);
+  const meses=periodos.map(p=>p.label);
+  const {models}=buildModelos(periodos);
+  for(const m of models.values()){
+    const coresArr=[...m.cores.values()];
+    const prefix=_commonPrefixWords(coresArr.map(c=>c.desc));
+    const nomeMod=_commonPrefixWords(m.descs)||('Modelo '+m.key);
+    for(const c of coresArr){
+      const t=meses.findIndex(x=>(c.porMes[x]||0)>0);
+      // precisa de pré-janela para estimar e de pós-janela para julgar
+      if(t<2||meses.length-t<2){ if(t>0)excluidos.janelaCurta++; continue; }
+      const cod3=c.cod.slice(6)||c.cod;
+      // o que o algoritmo teria dito, sabendo só o que se sabia até ali
+      const est=estimarCorNova(m.key,cod3,periodos.slice(0,t),pesos);
+      if(!est){excluidos.semCatalogo++;continue;} // cor inédita no portfólio: não havia o que prever
+      // desfecho real, pelo mesmo critério de sucesso
+      const pos=meses.slice(t);
+      const fatMod=pos.reduce((s,x)=>s+(m.totalMes[x]||0),0);
+      if(fatMod<=0)continue;
+      const share=pos.reduce((s,x)=>s+(c.porMes[x]||0),0)/fatMod;
+      const tend=_tendSerie(c,pos);
+      casos.push({modelKey:m.key,modelo:nomeMod,cod3,cor:_colorLabel(c.desc,prefix),
+        mes:meses[t],p:est.p,y:(share>=EST_LIMIAR_SHARE&&tend>=EST_TOL_QUEDA)?1:0,
+        share,tend,confianca:est.confianca,mesesPre:t,mesesPos:pos.length,
+        // evidência bruta do caso: independe dos pesos, então a calibração
+        // recombina isto analiticamente em vez de refazer o backtest inteiro
+        // para cada ponto da grade
+        ev:{temBase:est.base.usada,p0:est.base.usada?est.base.taxa:0.5,lancN:est.base.n,
+            nGer:est.geral.n,nRelGer:est.geral.relevantes,
+            nFam:est.familia.n,nRelFam:est.familia.relevantes}});
+    }
+  }
+  return _metricasBacktest(casos,excluidos);
+}
+
+function _metricasBacktest(casos,excluidos){
+  const n=casos.length;
+  const base={casos,n,excluidos,brier:null,brierBase:null,taxaReal:null,ganho:null,faixas:[],discrim:null};
+  if(!n) return base;
+  const taxaReal=casos.reduce((s,c)=>s+c.y,0)/n;
+  const sq=(a,b)=>(a-b)*(a-b);
+  const brier=casos.reduce((s,c)=>s+sq(c.p,c.y),0)/n;
+  // Linha de base: prever a taxa observada para todos. É deliberadamente
+  // generosa — usa a taxa real do próprio holdout — para que "ganhou da
+  // baseline" signifique algo.
+  const brierBase=casos.reduce((s,c)=>s+sq(taxaReal,c.y),0)/n;
+  const ganho=brierBase>0?(brierBase-brier)/brierBase:0;
+  // Calibração: quando disse X%, aconteceu X%?
+  const faixas=[[0,.3],[.3,.45],[.45,.65],[.65,.8],[.8,1.0001]].map(([a,b])=>{
+    const g=casos.filter(c=>c.p>=a&&c.p<b);
+    return {a,b,n:g.length,
+      previsto:g.length?g.reduce((s,c)=>s+c.p,0)/g.length:null,
+      real:g.length?g.reduce((s,c)=>s+c.y,0)/g.length:null};
+  }).filter(f=>f.n>0);
+  // Discriminação: em pares (sucesso, fracasso), o sucesso recebeu nota maior?
+  const suc=casos.filter(c=>c.y===1), fal=casos.filter(c=>c.y===0);
+  let conc=0,tot=0;
+  for(const s of suc)for(const f of fal){tot++;if(s.p>f.p)conc++;else if(s.p===f.p)conc+=.5;}
+  return Object.assign(base,{taxaReal,brier,brierBase,ganho,faixas,discrim:tot?conc/tot:null});
+}
+
+// Recombina a evidência de um caso com um jogo de pesos. Réplica exata da
+// conta feita em estimarCorNova — é o que permite varrer a grade sem
+// reprocessar a base a cada ponto.
+function _posteriorDe(ev,W){
+  const w0=ev.temBase?Math.min(ev.lancN,W.base):2;
+  let A=w0*ev.p0, B=w0*(1-ev.p0);
+  if(ev.nGer){const wg=Math.min(ev.nGer,W.geral),pg=ev.nRelGer/ev.nGer;A+=wg*pg;B+=wg*(1-pg);}
+  if(ev.nFam){const wf=Math.min(ev.nFam*W.fatorFamilia,W.familia),pf=ev.nRelFam/ev.nFam;A+=wf*pf;B+=wf*(1-pf);}
+  return A/(A+B);
+}
+
+// ====================================================================
+// CALIBRAÇÃO — busca em grade com trava de overfitting.
+//
+// Com poucas dezenas de casos, uma grade solta decora ruído e devolve
+// pesos que parecem ótimos e não generalizam. As travas aqui importam
+// mais que a busca:
+//   1. mínimo de casos para sequer tentar;
+//   2. leave-one-out — cada caso é previsto por pesos ajustados sem ele,
+//      então o número reportado não é auto-elogio;
+//   3. grade curta e grossa, não busca fina;
+//   4. só troca o padrão se ganhar por margem real.
+// ====================================================================
+function calibrarEstimador(periodos){
+  const bt=backtestEstimador(EST_PESOS_PADRAO,periodos);
+  if(bt.n<EST_MIN_CASOS_CALIB)
+    return {ok:false,motivo:'casos',n:bt.n,minimo:EST_MIN_CASOS_CALIB,bt};
+  const ys=bt.casos.map(c=>c.y);
+  if(ys.every(y=>y===ys[0]))
+    return {ok:false,motivo:'semVariacao',n:bt.n,bt};  // tudo sucesso ou tudo fracasso: nada a aprender
+  const grade=[];
+  for(const base of [5,10,20])
+    for(const geral of [6,12,24])
+      for(const familia of [4,9,18])
+        for(const fatorFamilia of [1,1.5,2,3])
+          grade.push({base,geral,familia,fatorFamilia});
+  const preds=grade.map(W=>bt.casos.map(c=>_posteriorDe(c.ev,W)));
+  const sq=(a,b)=>(a-b)*(a-b);
+  const brierDe=(pv,pular)=>{
+    let s=0,n=0;
+    pv.forEach((p,i)=>{if(i===pular)return;s+=sq(p,ys[i]);n++;});
+    return n?s/n:1;
+  };
+  // Leave-one-out: estimativa honesta do que a calibração entrega em dado novo
+  let looSum=0;
+  for(let i=0;i<bt.n;i++){
+    let melhor=0,melhorB=Infinity;
+    for(let g=0;g<grade.length;g++){const b=brierDe(preds[g],i);if(b<melhorB){melhorB=b;melhor=g;}}
+    looSum+=sq(preds[melhor][i],ys[i]);
+  }
+  const brierLOO=looSum/bt.n;
+  // Pesos que iriam para produção: melhor ponto da grade no conjunto todo
+  let gBest=0,bBest=Infinity;
+  for(let g=0;g<grade.length;g++){const b=brierDe(preds[g],-1);if(b<bBest){bBest=b;gBest=g;}}
+  const brierPadrao=brierDe(bt.casos.map(c=>_posteriorDe(c.ev,EST_PESOS_PADRAO)),-1);
+  const ganho=brierPadrao>0?(brierPadrao-brierLOO)/brierPadrao:0;
+  return {ok:true,n:bt.n,pontosGrade:grade.length,pesos:grade[gBest],
+    brierLOO,brierPadrao,brierAjustado:bBest,ganho,
+    aplicar:ganho>=EST_GANHO_MINIMO,minGanho:EST_GANHO_MINIMO,bt};
+}
+function aplicarCalibracao(pesos){
+  try{localStorage.setItem(EST_LS_PESOS,JSON.stringify(pesos));return true;}catch(e){return false;}
+}
+function resetCalibracao(){
+  try{localStorage.removeItem(EST_LS_PESOS);return true;}catch(e){return false;}
 }
 
 // Estado da última estimativa calculada (usado pela impressão)
@@ -5042,7 +5219,8 @@ function renderEstimativa(){
     +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Como as três fontes entram.</strong></p>`
     +`<span style="display:block;">1. Taxa-base: ${est.base.usada?`${est.base.sucessos} de ${est.base.n} lançamentos deram certo (${pf(est.base.taxa)})`:'sem amostra suficiente — entra como neutro (50%)'}, com peso ${est.base.peso.toFixed(1)}.</span>`
     +`<span style="display:block;">2. Fora da família: ${est.geral.relevantes} de ${est.geral.n} modelos com bom desempenho, com peso ${est.geral.peso.toFixed(1)}.</span>`
-    +`<span style="display:block;">3. Mesma família ${est.famKey}: ${est.familia.relevantes} de ${est.familia.n} casos, com peso ${est.familia.peso.toFixed(1)} (observação da própria família pesa ${EST_PESO_FAMILIA}× mais).</span>`
+    +`<span style="display:block;">3. Mesma família ${est.famKey}: ${est.familia.relevantes} de ${est.familia.n} casos, com peso ${est.familia.peso.toFixed(1)} (observação da própria família pesa ${est.pesos.fatorFamilia}× mais).</span>`
+    +(est.calibrado?`<span style="display:block;margin-top:.2rem;color:#60a5fa;">Os tetos de peso em uso (${est.pesos.base}/${est.pesos.geral}/${est.pesos.familia}, fator ${est.pesos.fatorFamilia}) foram calibrados contra o histórico da base, não são os padrões de fábrica.</span>`:'')
     +`<span style="display:block;margin-top:.2rem;">As três viram uma distribuição Beta(${est.posterior.A.toFixed(2)}; ${est.posterior.B.toFixed(2)}). A probabilidade publicada é a média dessa distribuição e a faixa é o intervalo de 80%. Amostra pequena ⇒ faixa larga, por construção.</span>`
     +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Projeção financeira.</strong> Participação mediana da cor onde ela já existe (${pf(est.portfolio.shareMediano)}) aplicada sobre o faturamento médio dos últimos ${est.projecao.nUlt} ${est.projecao.nUlt>1?'meses':'mês'} do modelo. A canibalização esperada é a mediana observada nos lançamentos da base e desconta do bruto para chegar ao incremento líquido.</p>`
     +`<p style="margin:.5rem 0 .2rem;"><strong style="color:var(--text)">Limitações.</strong></p>`
@@ -5050,6 +5228,138 @@ function renderEstimativa(){
     +`<p style="margin:.5rem 0 0;font-style:italic;">A estimativa indica ordem de grandeza e direção. Não prova causa e efeito e não substitui teste comercial.</p>`
     +`</div></details>`;
   out.innerHTML=h;
+}
+
+// ── Painel de validação: o desempenho medido do próprio estimador ──
+let _EST_CALIB=null;
+function toggleValidacao(){
+  const p=document.getElementById('est-valid-panel');
+  if(!p)return;
+  if(p.style.display==='none'){p.style.display='block';renderValidacao();}
+  else p.style.display='none';
+}
+function rodarCalibracao(){
+  _EST_CALIB=calibrarEstimador();
+  if(_EST_CALIB.ok&&_EST_CALIB.aplicar)aplicarCalibracao(_EST_CALIB.pesos);
+  renderValidacao();renderEstimativa();atualizarFlagCalib();
+}
+function desfazerCalibracao(){
+  resetCalibracao();_EST_CALIB=null;
+  renderValidacao();renderEstimativa();atualizarFlagCalib();
+}
+function atualizarFlagCalib(){
+  const f=document.getElementById('est-calib-flag');
+  if(f)f.style.display=estPesosCalibrados()?'inline':'none';
+}
+function renderValidacao(){
+  const el=document.getElementById('est-valid-panel');
+  if(!el)return;
+  if(!PERIODOS.length){el.innerHTML='<span style="color:var(--text-muted);font-size:.8rem;">Carregue a base primeiro.</span>';return;}
+  // Sempre com os pesos PADRÃO, nunca com os calibrados: medir pesos que
+  // foram ajustados nestes mesmos casos daria um número inflado — o erro
+  // cairia porque decorou a amostra, não porque prevê melhor. A performance
+  // esperada dos pesos calibrados é o leave-one-out, reportado logo abaixo.
+  const bt=backtestEstimador(EST_PESOS_PADRAO);
+  const pf=v=>v==null?'—':(v*100).toFixed(0)+'%';
+  const n3=v=>v==null?'—':v.toFixed(3);
+  const row=(k,v,cor)=>`<div style="display:grid;grid-template-columns:1fr auto;gap:.15rem .9rem;font-size:.78rem;align-items:baseline;margin-top:.1rem;"><span style="color:var(--text-muted)">${k}</span><span style="font-weight:600;text-align:right;color:${cor||'var(--text)'}">${v}</span></div>`;
+  const head=t=>`<span style="display:block;font-weight:700;font-size:.7rem;letter-spacing:.06em;color:var(--text-muted);margin:.5rem 0 .2rem;opacity:.85;">${t}</span>`;
+
+  let h=`<div style="font-weight:800;font-size:.85rem;margin-bottom:.3rem;">📊 O estimador acerta?</div>`;
+  h+=`<p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .5rem;line-height:1.5;">Cada cor já lançada na base é reestimada usando <strong>só os meses anteriores ao lançamento</strong>, e a previsão é comparada com o que de fato aconteceu depois.</p>`;
+
+  if(bt.n===0){
+    h+=`<div style="font-size:.8rem;color:#fb923c;line-height:1.55;">Nenhum caso avaliável na base atual.`
+      +` Um caso precisa de pelo menos 2 meses antes do lançamento (para estimar) e 2 depois (para julgar).`
+      +(bt.excluidos.janelaCurta?` ${bt.excluidos.janelaCurta} lançamento${bt.excluidos.janelaCurta>1?'s ficaram':' ficou'} de fora por janela curta.`:'')
+      +(bt.excluidos.semCatalogo?` ${bt.excluidos.semCatalogo} por a cor ainda não existir em nenhum outro modelo na época.`:'')
+      +` Carregue mais meses de histórico para conseguir validar.</div>`;
+    el.innerHTML=h;return;
+  }
+
+  // Veredito sobre o próprio estimador
+  const bate=bt.ganho>0.02;
+  h+=bate
+    ? `<div style="font-size:.85rem;font-weight:800;color:#4ade80;">🟢 Melhor que o chute — erra ${pf(bt.ganho)} menos que prever a taxa-base para todos</div>`
+    : `<div style="font-size:.85rem;font-weight:800;color:#f87171;">🔴 Não supera o chute da taxa-base — trate os números como referência frágil, não como decisão</div>`;
+  if(estPesosCalibrados()){
+    h+=`<div style="font-size:.76rem;color:#60a5fa;margin-top:.2rem;line-height:1.5;">⚙️ A estimativa está usando pesos calibrados, mas os números acima são medidos com os pesos <strong>padrão</strong> — de propósito. Medir os pesos calibrados nos mesmos casos que os produziram daria um número inflado. O desempenho esperado dos calibrados é o <em>leave-one-out</em>${_EST_CALIB&&_EST_CALIB.ok?` de ${n3(_EST_CALIB.brierLOO)}`:', abaixo — clique em calibrar para recalculá-lo'}.</div>`;
+  }
+
+  h+='<div style="display:flex;flex-wrap:wrap;gap:.8rem 2.2rem;align-items:flex-start;margin-top:.3rem;">';
+  h+='<div style="min-width:300px;flex:1 1 300px;">';
+  h+=head('DESEMPENHO MEDIDO (PESOS PADRÃO)');
+  h+=row('Casos avaliáveis:',bt.n);
+  h+=row('Taxa real de sucesso:',pf(bt.taxaReal));
+  h+=row('Erro do estimador (Brier):',n3(bt.brier),bate?'#4ade80':'#f87171');
+  h+=row('Erro do chute (baseline):',n3(bt.brierBase));
+  h+=row('Ordena certo (sucesso > fracasso):',pf(bt.discrim));
+  if(bt.excluidos.janelaCurta||bt.excluidos.semCatalogo)
+    h+=row('Lançamentos fora da conta:',`${bt.excluidos.janelaCurta} por janela curta, ${bt.excluidos.semCatalogo} por cor inédita`);
+  h+='</div>';
+
+  // Calibração por faixa
+  h+='<div style="min-width:300px;flex:1 1 300px;">';
+  h+=head('QUANDO DISSE X%, ACONTECEU?');
+  if(bt.faixas.length){
+    h+='<table style="width:100%;font-size:.75rem;border-collapse:collapse;"><thead><tr>'
+      +['Faixa','Casos','Previsto','Real'].map(t=>`<th style="text-align:right;color:var(--text-muted);font-weight:600;padding:.15rem .3rem;">${t}</th>`).join('')
+      +'</tr></thead><tbody>';
+    for(const f of bt.faixas){
+      const desvio=Math.abs(f.previsto-f.real);
+      const cor=desvio<=.15?'#4ade80':desvio<=.3?'#fbbf24':'#f87171';
+      h+=`<tr><td style="text-align:right;padding:.15rem .3rem;color:var(--text-muted);">${pf(f.a)}–${pf(f.b>1?1:f.b)}</td>`
+        +`<td style="text-align:right;padding:.15rem .3rem;">${f.n}</td>`
+        +`<td style="text-align:right;padding:.15rem .3rem;">${pf(f.previsto)}</td>`
+        +`<td style="text-align:right;padding:.15rem .3rem;font-weight:700;color:${cor};">${pf(f.real)}</td></tr>`;
+    }
+    h+='</tbody></table>';
+    h+=`<span style="display:block;font-size:.72rem;color:var(--text-muted);margin-top:.25rem;">Quanto mais perto "Real" ficar de "Previsto", mais honesta é a probabilidade. Poucos casos por faixa ⇒ leia com reserva.</span>`;
+  }
+  h+='</div></div>';
+
+  // Calibração dos pesos
+  h+=head('CALIBRAR OS PESOS');
+  const calibrado=estPesosCalibrados();
+  h+=`<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.2rem;">`
+    +`<button onclick="rodarCalibracao()" style="background:var(--accent,#FF5C1F);color:#0a0a0b;border:none;border-radius:6px;padding:.35rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">⚙️ Calibrar com o histórico</button>`
+    +(calibrado?`<button onclick="desfazerCalibracao()" style="background:var(--surface,#0f172a);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;padding:.35rem .8rem;font-size:.78rem;cursor:pointer;font-family:inherit;">↩️ Voltar ao padrão</button>`:'')
+    +`</div>`;
+  const c=_EST_CALIB;
+  if(c){
+    if(!c.ok&&c.motivo==='casos'){
+      h+=`<div style="font-size:.78rem;color:#fb923c;margin-top:.4rem;line-height:1.55;">Calibração recusada: ${c.n} caso${c.n===1?'':'s'} avaliáve${c.n===1?'l':'is'}, mínimo de ${c.minimo}. Com menos que isso a busca decora ruído em vez de aprender — os pesos ficariam ótimos nestes casos e piores em qualquer cor nova. Carregue mais meses de histórico.</div>`;
+    }else if(!c.ok&&c.motivo==='semVariacao'){
+      h+=`<div style="font-size:.78rem;color:#fb923c;margin-top:.4rem;line-height:1.55;">Calibração recusada: todos os ${c.n} casos tiveram o mesmo desfecho. Sem variação não há o que aprender.</div>`;
+    }else if(c.ok){
+      h+=row('Casos usados:',c.n);
+      h+=row('Pontos da grade testados:',c.pontosGrade);
+      h+=row('Erro com os pesos padrão:',n3(c.brierPadrao));
+      h+=row('Erro calibrado (leave-one-out):',n3(c.brierLOO));
+      h+=row('Ganho real:',pf(c.ganho),c.aplicar?'#4ade80':'#fb923c');
+      h+=row('Pesos encontrados:',`${c.pesos.base}/${c.pesos.geral}/${c.pesos.familia}, fator ${c.pesos.fatorFamilia}`);
+      h+=c.aplicar
+        ? `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem;line-height:1.55;">✓ Aplicado. O ganho de ${pf(c.ganho)} supera o mínimo de ${pf(c.minGanho)} exigido para trocar o padrão.</div>`
+        : `<div style="font-size:.78rem;color:#fb923c;margin-top:.35rem;line-height:1.55;">Pesos padrão mantidos. O ganho de ${pf(c.ganho)} não alcança o mínimo de ${pf(c.minGanho)} — trocar por essa diferença seria decorar esta base específica, não melhorar a previsão.</div>`;
+      h+=`<div style="font-size:.72rem;color:var(--text-muted);margin-top:.3rem;line-height:1.5;">O erro calibrado é medido em <em>leave-one-out</em>: cada caso é previsto por pesos ajustados sem ele. Sem isso o número seria auto-elogio — o erro dentro da própria amostra foi ${n3(c.brierAjustado)}, otimista por construção.</div>`;
+    }
+  }
+
+  // Lista dos casos
+  h+=`<details style="margin-top:.6rem;"><summary style="cursor:pointer;font-weight:700;font-size:.78rem;color:var(--accent);list-style:none;">📋 Ver os ${bt.n} casos, um a um</summary>`
+    +'<table style="width:100%;font-size:.74rem;border-collapse:collapse;margin-top:.4rem;"><thead><tr>'
+    +['Modelo','Cor','Lançou','Previu','Deu certo?','Part. real'].map((t,i)=>`<th style="text-align:${i<3?'left':'right'};color:var(--text-muted);font-weight:600;padding:.2rem .3rem;border-bottom:1px solid var(--border,#334155);">${t}</th>`).join('')
+    +'</tr></thead><tbody>';
+  for(const k of bt.casos.slice().sort((a,b)=>b.p-a.p)){
+    const acertou=(k.p>=.5)===(k.y===1);
+    h+=`<tr><td style="padding:.2rem .3rem;">${k.modelo}</td><td style="padding:.2rem .3rem;">${k.cor}</td>`
+      +`<td style="padding:.2rem .3rem;color:var(--text-muted);">${k.mes}</td>`
+      +`<td style="text-align:right;padding:.2rem .3rem;">${pf(k.p)}</td>`
+      +`<td style="text-align:right;padding:.2rem .3rem;font-weight:700;color:${k.y?'#4ade80':'#f87171'};">${k.y?'sim':'não'} ${acertou?'✓':'✗'}</td>`
+      +`<td style="text-align:right;padding:.2rem .3rem;color:var(--text-muted);">${pf(k.share)}</td></tr>`;
+  }
+  h+='</tbody></table></details>';
+  el.innerHTML=h;
 }
 
 function renderModelosTab(){
@@ -5146,7 +5456,9 @@ function renderModelosTab(){
   const auditPanel=document.getElementById('mod-audit-panel');
   if(auditPanel&&auditPanel.style.display!=='none')renderModAudit();
   // Recarrega as cores candidatas do modelo selecionado
-  try{populateEstSelect(cur.key);}catch(e){}
+  try{populateEstSelect(cur.key);atualizarFlagCalib();}catch(e){}
+  const validPanel=document.getElementById('est-valid-panel');
+  if(validPanel&&validPanel.style.display!=='none'){try{renderValidacao();}catch(e){}}
 }
 // ── Impressão: folha de estudo do modelo selecionado (Modelos/Cores) ──
 function printModelo(){
