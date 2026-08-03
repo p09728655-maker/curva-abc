@@ -234,6 +234,7 @@ header{background:var(--card);color:var(--text);padding:0 1.5rem;display:flex;al
 .mov-card.new .mov-card-val{color:#60a5fa;}
 .mov-card.out .mov-card-val{color:#fb923c;}
 .mov-card.stable .mov-card-val{color:var(--text-muted);}
+.mov-card.swing .mov-card-val{color:#facc15;}
 .mov-table{width:100%;border-collapse:collapse;font-size:.79rem;}
 .mov-table thead th{background:var(--surface2,#222226);color:var(--text-muted);padding:.5rem .65rem;text-align:left;font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;position:sticky;top:0;z-index:1;border-bottom:1px solid var(--border);}
 .mov-table tbody tr:nth-child(even){background:rgba(255,255,255,.02);}
@@ -5937,9 +5938,15 @@ function renderMovTab(){
     rows.push({cod,desc:rp[COL.DESC]||'',cvPrev,cqPrev,czPrev,fatPrev,cvCurr:'—',cqCurr:'—',czCurr:'—',fatCurr:0,status:'out',flag:String(rp[COL.FLAG]||'').trim().toUpperCase()});
   }
 
+  // Oscilação de faturamento — produto que manteve a classe ABC mas mudou de patamar
+  const SWING_LIMIT=15;
+  const swingPct=r=>(!r.fatPrev||!r.fatCurr)?null:(r.fatCurr-r.fatPrev)/r.fatPrev*100;
+  const isSwing=r=>{const d=swingPct(r);return d!=null&&Math.abs(d)>=SWING_LIMIT;};
+
   // Counts
   const counts={up:0,down:0,new:0,out:0,stable:0};
   for(const r of rows)counts[r.status]=(counts[r.status]||0)+1;
+  const swingRows=rows.filter(r=>r.status==='stable'&&isSwing(r));
 
   // Cards
   const cardDefs=[
@@ -5947,15 +5954,19 @@ function renderMovTab(){
     {key:'down',icon:'↓',label:'Desceram',cls:'down'},
     {key:'new',icon:'+',label:'Novos',cls:'new'},
     {key:'out',icon:'−',label:'Saíram',cls:'out'},
-    {key:'stable',icon:'=',label:'Estáveis',cls:'stable'},
+    {key:'stable',icon:'=',label:'Mesma classe',cls:'stable',title:'Mantiveram a mesma classe ABC de valor (a classe não mudou — o faturamento pode ter mudado)'},
   ];
   if(cardsEl){
     cardsEl.innerHTML=cardDefs.map(d=>
-      `<div class="mov-card ${d.cls}${_movFilter===d.key?' active':''}" onclick="setMovFilter('${d.key}')">
+      `<div class="mov-card ${d.cls}${_movFilter===d.key?' active':''}" onclick="setMovFilter('${d.key}')"${d.title?` title="${d.title}"`:''}>
         <div class="mov-card-val">${d.icon} ${counts[d.key]||0}</div>
         <div class="mov-card-lbl">${d.label}</div>
       </div>`
     ).join('')+
+    `<div class="mov-card swing${_movFilter==='swing'?' active':''}" onclick="setMovFilter('swing')" style="border-style:dashed;" title="Mantiveram a classe ABC, mas o faturamento oscilou ${SWING_LIMIT}% ou mais — subconjunto de 'Mesma classe'">
+        <div class="mov-card-val">⚡ ${swingRows.length}</div>
+        <div class="mov-card-lbl">Oscilaram ≥${SWING_LIMIT}%</div>
+      </div>`+
     `<div class="mov-card${_movFilter==='all'?' active':''}" onclick="setMovFilter('all')" style="border-style:dashed;">
         <div class="mov-card-val" style="color:var(--accent);">${rows.length}</div>
         <div class="mov-card-lbl">Todos</div>
@@ -5975,16 +5986,20 @@ function renderMovTab(){
     const col=v==='A'?'#60a5fa':v==='B'?'#fbbf24':'#4ade80';
     return`<span style="color:${col};font-weight:700;">${v}</span>`;
   };
-  const statusBadge=s=>{
+  const statusBadge=r=>{
+    // Classe mantida + faturamento fora da faixa: "estável" seria leitura errada
+    if(r.status==='stable'&&isSwing(r)){
+      const up=swingPct(r)>0;
+      const cls=r.cvCurr||'—';
+      return`<span class="badge-stable" title="Continua classe ${cls}, mas o faturamento ${up?'subiu':'caiu'} ${Math.abs(swingPct(r)).toFixed(0)}% — mudou de patamar dentro da classe">= MESMA CLASSE</span>`;
+    }
     const map={up:'<span class="badge-up">↑ SUBIU</span>',down:'<span class="badge-down">↓ DESCEU</span>',new:'<span class="badge-new">+ NOVO</span>',out:'<span class="badge-out">− SAIU</span>',stable:'<span class="badge-stable">= ESTÁVEL</span>'};
-    return map[s]||'';
+    return map[r.status]||'';
   };
   // Selo de grande oscilação de faturamento (mesmo mantendo a classe)
-  const SWING_LIMIT=15;
   const swingBadge=r=>{
-    if(!r.fatPrev||!r.fatCurr)return'';
-    const d=(r.fatCurr-r.fatPrev)/r.fatPrev*100;
-    if(Math.abs(d)<SWING_LIMIT)return'';
+    const d=swingPct(r);
+    if(d==null||Math.abs(d)<SWING_LIMIT)return'';
     const up=d>0;
     const bg=up?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)';
     const col=up?'#4ade80':'#f87171';
@@ -5992,11 +6007,18 @@ function renderMovTab(){
     return ` <span style="display:inline-block;margin-left:.3rem;padding:1px 6px;border-radius:6px;background:${bg};color:${col};font-weight:700;font-size:.68rem;white-space:nowrap;" title="Faturamento ${up?'subiu':'caiu'} ${Math.abs(d).toFixed(0)}%">${txt}</span>`;
   };
 
-  let filtered=_movFilter==='all'?rows:rows.filter(r=>r.status===_movFilter);
+  let filtered=_movFilter==='all'?rows
+    :_movFilter==='swing'?swingRows
+    :rows.filter(r=>r.status===_movFilter);
   if(_movHideExc) filtered=filtered.filter(r=>r.flag!=='EXC');
   // Sort: up first, then down, new, out, stable; within each by fatCurr desc
   const order={up:0,down:1,new:2,out:3,stable:4};
-  filtered.sort((a,b)=>order[a.status]-order[b.status]||b.fatCurr-a.fatCurr);
+  if(_movFilter==='swing'){
+    // Maiores oscilações primeiro — é o que interessa nessa visão
+    filtered.sort((a,b)=>Math.abs(swingPct(b))-Math.abs(swingPct(a)));
+  }else{
+    filtered.sort((a,b)=>order[a.status]-order[b.status]||b.fatCurr-a.fatCurr);
+  }
 
   if(!filtered.length){
     tbody.innerHTML='<tr><td colspan="12" style="color:var(--text-muted);padding:2rem;text-align:center;">Nenhum produto nessa categoria.</td></tr>';
@@ -6015,7 +6037,7 @@ function renderMovTab(){
     <td style="text-align:right;font-size:.75rem;">${fmt(r.fatPrev)}</td>
     <td style="text-align:right;font-size:.75rem;">${fmt(r.fatCurr)}</td>
     <td style="text-align:right;">${fmtDelta(r.fatPrev,r.fatCurr)}</td>
-    <td>${statusBadge(r.status)}${swingBadge(r)}</td>
+    <td>${statusBadge(r)}${swingBadge(r)}</td>
   </tr>`).join('');
 }
 
