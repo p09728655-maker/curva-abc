@@ -283,9 +283,14 @@ header{background:var(--card);color:var(--text);padding:0 1.5rem;display:flex;al
 .re-kpi-label{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
 .re-kpi-value{font-size:1.75rem;font-weight:800;color:var(--text);line-height:1.1;margin:.1rem 0;font-family:inherit;}
 .re-kpi-sub{font-size:.7rem;color:var(--text-muted);padding-top:.25rem;border-top:1px solid var(--border);}
-.re-body{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;}
+/* Cards são os próprios itens do grid e esticam para preencher a linha —
+   evita sobra de fundo embaixo de uma coluna mais curta. */
+.re-body{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;align-items:stretch;}
+.re-body>.re-card{margin-bottom:0;display:flex;flex-direction:column;}
+.re-body>.re-card>.re-card-body{flex:1;}
+.re-card.span2{grid-column:span 2;}
 @media(max-width:1200px){.re-body{grid-template-columns:1fr 1fr;}}
-@media(max-width:900px){.re-body{grid-template-columns:1fr;}}
+@media(max-width:900px){.re-body{grid-template-columns:1fr;}.re-card.span2{grid-column:span 1;}}
 .re-full-row{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:1.25rem;}
 .re-full-row .re-full{margin-top:0;}
 @media(max-width:900px){.re-full-row{grid-template-columns:1fr;}}
@@ -3753,7 +3758,7 @@ function renderResumoExec(){
   if(tmLanc>tmLinha&&lancRows.length>0)ops.push(`<div class="re-op"><div class="re-op-header"><span class="re-op-title">🚀 Lançamentos com Ticket Acima da Linha</span><span class="re-op-tag alta">ALTA</span></div>${brl(tmLanc)} vs ${brl(tmLinha)} da Linha. ${lancARows.length} já na Classe A — prioridade de escala.</div>`);
   if(aaHighTicket.length>0)ops.push(`<div class="re-op"><div class="re-op-header"><span class="re-op-title">⭐ Produtos AA com Ticket +50% acima da média</span><span class="re-op-tag alta">ALTA</span></div>Escalar: ${aaHighTicket.map(r=>`<strong>${String(r[COL.DESC]||'').substring(0,18)}</strong> (${brl(num(r,COL.TICKET))})`).join(', ')}.</div>`);
   if(abRows.length>0)ops.push(`<div class="re-op"><div class="re-op-header"><span class="re-op-title">📦 ${abRows.length} Produtos AB — Alto Ticket Represado</span><span class="re-op-tag media">MÉDIA</span></div>${brl(sumFat(abRows))} em faturamento. Verificar restrição de produção ou visibilidade.</div>`);
-  const opSection=`<div class="re-card"><div class="re-card-title">📈 Oportunidades de Crescimento</div><div class="re-card-body">${ops.length?ops.join(''):'<p style="color:var(--text-muted);font-size:.83rem;">Dados insuficientes.</p>'}</div></div>`;
+  const opSection=`<div class="re-card span2"><div class="re-card-title">📈 Oportunidades de Crescimento</div><div class="re-card-body">${ops.length?ops.join(''):'<p style="color:var(--text-muted);font-size:.83rem;">Dados insuficientes.</p>'}</div></div>`;
 
   // ── Diagnóstico ──
   const diagParts=[];
@@ -3793,9 +3798,8 @@ function renderResumoExec(){
 </div>
 ${kpiStrip}
 <div class="re-body">
-  <div class="re-col">${abcTable}${tipoTable}</div>
-  <div class="re-col">${top5Table}${opSection}</div>
-  <div class="re-col">${alertasSection}</div>
+  ${abcTable}${top5Table}${alertasSection}
+  ${tipoTable}${opSection}
 </div>
 <div class="re-full-row">${diagSection}${planosSection}</div>`;
 }
@@ -3876,9 +3880,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;b
 .re-kpi-value{font-size:11pt;font-weight:700;color:#1e2532;margin-top:.5mm;line-height:1.2;}
 .re-kpi-sub{font-size:6.5pt;color:#6b7a99;margin-top:.5mm;}
 
-/* ── Body grid 3 col ── */
-.re-body{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin-bottom:3mm;}
-.re-col{}
+/* ── Body grid 3 col — cards são os itens e esticam na linha ── */
+.re-body{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin-bottom:3mm;align-items:stretch;}
+.re-body>.re-card{margin-bottom:0;}
+.re-card.span2{grid-column:span 2;}
 
 /* ── Full-row side by side ── */
 .re-full-row{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:3mm;}
