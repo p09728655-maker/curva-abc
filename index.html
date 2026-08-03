@@ -834,9 +834,19 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
 #btn-install{margin-top:1.25rem;display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;font-size:.9rem;font-weight:600;color:#fff;background:var(--primary);border:none;border-radius:var(--radius);cursor:pointer;box-shadow:var(--shadow-md);transition:background .15s,transform .1s;}
 #btn-install:hover{background:var(--primary-light);}
 #btn-install:active{transform:translateY(1px);}
+/* Botão de instalar no header do dashboard — é onde cai quem abre o link,
+   já que a tela de importação é pulada quando a planilha carrega sozinha. */
+#btn-install-app{display:inline-flex;align-items:center;gap:.3rem;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:.35rem .7rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;}
+#btn-install-app:hover{background:var(--primary-light);}
+/* O atributo hidden precisa vencer o display dos botões acima */
+#btn-install[hidden],#btn-install-app[hidden],#ios-install-bar[hidden]{display:none!important;}
 #ios-install-hint{margin-top:1rem;max-width:420px;text-align:center;font-size:.82rem;line-height:1.5;color:var(--text-muted);}
 #ios-install-hint strong{color:var(--text);}
-@media (display-mode:standalone){#btn-install,#ios-install-hint{display:none!important;}}
+/* Barra de instalação no iOS, que não oferece prompt nativo */
+#ios-install-bar{position:fixed;left:.6rem;right:.6rem;bottom:.6rem;z-index:9999;display:flex;align-items:center;gap:.75rem;padding:.7rem .9rem;background:var(--card);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.4);font-size:.82rem;line-height:1.45;color:var(--text);padding-bottom:calc(.7rem + env(safe-area-inset-bottom));}
+#ios-install-bar strong{color:var(--primary);}
+#ios-install-close{margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--text-muted);font-size:1rem;cursor:pointer;padding:.2rem .4rem;font-family:inherit;}
+@media (display-mode:standalone){#btn-install,#btn-install-app,#ios-install-hint,#ios-install-bar{display:none!important;}}
 </style>
 </head>
 <body>
@@ -874,6 +884,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
       <div class="file-info" id="file-info-text" style="display:none;">—<span id="header-periodo" style="color:var(--text-muted);font-size:.78rem;margin-left:.25rem;"></span></div>
     </div>
     <div class="header-right" style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+      <button id="btn-install-app" type="button" hidden title="Instalar o app neste dispositivo">⬇ Instalar app</button>
       <button id="btn-theme" onclick="toggleTheme()" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;padding:.35rem .65rem;font-size:.85rem;cursor:pointer;transition:all .15s;color:var(--text-muted);font-family:inherit;" title="Alternar tema">🌙</button>
     </div>
   </header>
@@ -6016,6 +6027,10 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 </script>
+<div id="ios-install-bar" hidden>
+  <span>Instale o app: toque em <strong>Compartilhar</strong> e depois em <strong>“Adicionar à Tela de Início”</strong>.</span>
+  <button type="button" id="ios-install-close" aria-label="Fechar">✕</button>
+</div>
 <!-- PWA: registro do service worker + fluxo de instalação -->
 <script>
 (function(){
@@ -6030,45 +6045,69 @@ function exportCSV(){
   }
 
   var deferredPrompt = null;
-  var btn = document.getElementById('btn-install');
+  // Dois pontos de entrada: a tela de importação e o header do dashboard. Quem
+  // abre o link cai direto no dashboard, porque a planilha carrega sozinha.
+  var botoes = ['btn-install','btn-install-app']
+    .map(function(id){ return document.getElementById(id); })
+    .filter(Boolean);
   var iosHint = document.getElementById('ios-install-hint');
+  var iosBar = document.getElementById('ios-install-bar');
+  var IOS_BAR_OFF = 'ios_install_dispensado';
 
   function isStandalone(){
     return window.matchMedia('(display-mode: standalone)').matches ||
            window.navigator.standalone === true;
   }
+  function mostrarBotoes(v){
+    botoes.forEach(function(b){ b.hidden = !v; });
+  }
 
-  // Android/desktop: intercepta o prompt nativo e mostra nosso botão
+  // Sem prompt disponível não há o que instalar: os botões só aparecem depois
+  // que o navegador confirma que o app é instalável.
+  mostrarBotoes(false);
+
+  // Android/desktop: intercepta o prompt nativo e mostra nossos botões
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    if (btn && !isStandalone()) { btn.hidden = false; }
+    if (!isStandalone()) mostrarBotoes(true);
   });
 
-  if (btn) {
-    btn.addEventListener('click', function(){
+  botoes.forEach(function(b){
+    b.addEventListener('click', function(){
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       deferredPrompt.userChoice.finally(function(){
         deferredPrompt = null;
-        btn.hidden = true;
+        mostrarBotoes(false);
       });
     });
-  }
+  });
 
   window.addEventListener('appinstalled', function(){
     deferredPrompt = null;
-    if (btn) btn.hidden = true;
+    mostrarBotoes(false);
     if (iosHint) iosHint.hidden = true;
+    if (iosBar) iosBar.hidden = true;
   });
 
-  // iOS/iPadOS não dispara beforeinstallprompt: mostra dica manual
+  // iOS/iPadOS não dispara beforeinstallprompt: instrução manual
   var ua = window.navigator.userAgent;
   var isIOS = /iPad|iPhone|iPod/.test(ua) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   var isSafari = /^((?!chrome|crios|android|fxios).)*safari/i.test(ua);
-  if (isIOS && isSafari && iosHint && !isStandalone()) {
-    iosHint.hidden = false;
+  if (isIOS && isSafari && !isStandalone()) {
+    if (iosHint) iosHint.hidden = false;
+    var dispensado = false;
+    try { dispensado = localStorage.getItem(IOS_BAR_OFF) === '1'; } catch(e){}
+    if (iosBar && !dispensado) iosBar.hidden = false;
+  }
+  var fechar = document.getElementById('ios-install-close');
+  if (fechar) {
+    fechar.addEventListener('click', function(){
+      if (iosBar) iosBar.hidden = true;
+      try { localStorage.setItem(IOS_BAR_OFF, '1'); } catch(e){}
+    });
   }
 })();
 </script>
