@@ -988,6 +988,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
     <button class="tab-btn" id="tab-btn-evolucao" data-tab="evolucao" style="display:none;">📈 Evolução Mensal</button>
     <button class="tab-btn" id="tab-btn-mov" data-tab="mov" style="display:none;">📊 Movimentação</button>
     <button class="tab-btn" id="tab-btn-modelos" data-tab="modelos" style="display:none;">🎨 Modelos/Cores</button>
+    <button class="tab-btn" id="tab-btn-cores" data-tab="cores" style="display:none;">🌈 Cores</button>
   </div>
 
   <main>
@@ -1063,6 +1064,26 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
     </section>
 
     <!-- EDITAR CLASSES -->
+    <!-- CORES — consolidado do portfólio -->
+    <section id="sec-cores" style="display:none;">
+      <div class="section-title">Movimento das Cores — portfólio consolidado</div>
+      <div class="mov-header" style="flex-wrap:wrap;gap:.6rem;align-items:center;">
+        <span class="mov-label">Comparando:</span>
+        <select id="cor-de" onchange="renderCoresTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"></select>
+        <span style="color:var(--text-muted);">→</span>
+        <select id="cor-ate" onchange="renderCoresTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"></select>
+        <span class="filter-separator" style="margin:0 .3rem;">|</span>
+        <span class="mov-label">Família:</span>
+        <select id="cor-fam" onchange="renderCoresTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"><option value="">Todas</option></select>
+        <label style="font-size:.78rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:.35rem;margin-left:auto;" title="Considera apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.">
+          <input type="checkbox" id="cor-base-fixa" onchange="renderCoresTab()"> Base constante (só produtos nos 2 períodos)
+        </label>
+      </div>
+      <div id="cor-cards" class="mov-cards" style="margin-top:1rem;"></div>
+      <div id="cor-content"></div>
+      <div id="cor-nota" style="color:var(--text-muted);font-size:.78rem;margin-top:1rem;line-height:1.55;"></div>
+    </section>
+
     <section id="sec-classes">
       <div class="section-title">Editar Classes do Portfólio</div>
       <div class="classes-toolbar">
@@ -2296,7 +2317,7 @@ function finalizarCargaSheets(){
   if(fd)fd.textContent=now.toLocaleDateString('pt-BR')+' às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   importScreen.style.display='none';dashboardEl.style.display='flex';
   const bt=document.getElementById('btn-trocar');if(bt)bt.style.display='inline-flex';
-  ['tab-btn-evolucao','tab-btn-mov','tab-btn-modelos'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='inline-block';});
+  ['tab-btn-evolucao','tab-btn-mov','tab-btn-modelos','tab-btn-cores'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='inline-block';});
   renderPeriodoChips();
   // Padrão: abre já na Curva ABC consolidada dos últimos 3 meses (janela de 90 dias)
   consolidarPeriodos();
@@ -3908,6 +3929,7 @@ function switchTab(tab){
   const isMov=tab==='mov';
   const isModelos=tab==='modelos';
   const isMaterial=tab==='material';
+  const isCores=tab==='cores';
   document.getElementById('sec-resumo-exec').style.display=isResumo?'block':'none';
   document.getElementById('sec-classes').style.display=isClasses?'block':'none';
   document.getElementById('sec-mov').style.display=isMov?'block':'none';
@@ -3917,15 +3939,18 @@ function switchTab(tab){
   if(secMod) secMod.style.display=isModelos?'block':'none';
   const secMat=document.getElementById('sec-material');
   if(secMat) secMat.style.display=isMaterial?'block':'none';
+  const secCor=document.getElementById('sec-cores');
+  if(secCor) secCor.style.display=isCores?'block':'none';
   ALL_ANALYSIS_SECTIONS.filter(id=>id!=='sec-evolucao').forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.style.display=(isResumo||isEvo||isClasses||isMov||isModelos||isMaterial)?'none':'';
+    if(el)el.style.display=(isResumo||isEvo||isClasses||isMov||isModelos||isMaterial||isCores)?'none':'';
   });
   if(isClasses) renderClassesTab();
   if(isMov) renderMovTab();
   if(isEvo && PERIODOS.length) renderEvolucao();
   if(isModelos) renderModelosTab();
   if(isMaterial) renderMaterialTab();
+  if(isCores) renderCoresTab();
 }
 
 // ====================================================================
@@ -3972,6 +3997,227 @@ function _colorLabel(desc,prefix){
   const up=String(desc).toUpperCase();
   if(prefix&&up.startsWith(prefix)){const c=String(desc).slice(prefix.length).trim();if(c)return c;}
   return desc;
+}
+
+// ====================================================================
+// CORES — consolidado do portfólio inteiro.
+// A cor é o sufixo de 3 dígitos do código (Família 3 + Modelo 3 + Cor 3),
+// que se repete entre famílias — 116 é Cinamomo tanto em Penteadeira quanto
+// em Rack. A descrição não serve para agrupar: vem truncada na planilha
+// ("BRANCO ACETINAD") e mistura cor com medida.
+// ====================================================================
+const COR_LIMITE=5; // ± % a partir do qual a cor deixa de ser "estável"
+
+function buildCores(periodos){
+  periodos=periodos||PERIODOS;
+  const meses=periodos.map(p=>p.label);
+  const {models}=buildModelos(periodos);
+  // Prefixo comum das descrições do modelo — o que sobra depois dele é a cor
+  const prefixos=new Map();
+  for(const [k,m] of models) prefixos.set(k,_commonPrefixWords(m.descs));
+
+  const cores=new Map();
+  const fora=new Set();
+  for(const p of periodos){
+    for(const r of p.data){
+      const cod=String(r[COL.COD]||'').replace(/[.\s]/g,'').trim();
+      if(!/^\d{9}$/.test(cod)){ if(cod) fora.add(cod); continue; }
+      const suf=cod.slice(6), mod=cod.slice(0,6), fam=cod.slice(0,3);
+      let c=cores.get(suf);
+      if(!c){c={suf,itens:new Map(),nomes:new Map()};cores.set(suf,c);}
+      let it=c.itens.get(cod);
+      if(!it){it={cod,fam,mod,desc:String(r[COL.DESC]||'').trim(),porMes:{},porMesQ:{}};c.itens.set(cod,it);}
+      it.porMes[p.label]=(it.porMes[p.label]||0)+num(r,COL.FAT);
+      it.porMesQ[p.label]=(it.porMesQ[p.label]||0)+num(r,COL.QTD);
+      // Vota no nome da cor. Modelo de cor única devolve a descrição inteira,
+      // que não é nome de cor — esse voto é descartado.
+      const rot=_colorLabel(it.desc,prefixos.get(mod)||'').trim().toUpperCase();
+      if(rot&&rot!==it.desc.trim().toUpperCase()) c.nomes.set(rot,(c.nomes.get(rot)||0)+1);
+    }
+  }
+  for(const c of cores.values()){
+    const cand=[...c.nomes.entries()].sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length);
+    c.nome=cand.length?cand[0][0]:('Cor '+c.suf);
+  }
+  return {meses,cores,fora:fora.size};
+}
+
+// Amostra visual — só ilustrativa, derivada do nome da cor
+function _corSwatch(nome){
+  const n=String(nome||'').toUpperCase();
+  let bg='#71717a';
+  if(/OFF WHITE.*CINAMOMO|CINAMOMO.*OFF WHITE/.test(n)) bg='linear-gradient(135deg,#efe7d8 50%,#8a5a33 50%)';
+  else if(/OFF WHITE/.test(n)) bg='#efe7d8';
+  else if(/CINAMOMO/.test(n)) bg='#8a5a33';
+  else if(/PRETO/.test(n)) bg='#18181b';
+  else if(/BRANCO/.test(n)) bg='#f8f8f8';
+  else if(/ROSA/.test(n)) bg='#f0aec4';
+  else if(/ALECRIM|VERDE/.test(n)) bg='#6b7f5e';
+  else if(/AZUL/.test(n)) bg='#5b7fa6';
+  else if(/CINZA|GRAFITE/.test(n)) bg='#8b8b91';
+  else if(/FREIJ|CARVALHO|NOGUEIRA|IPE|TABACO|CAFE|NATURE|NATURAL|AMENDOA/.test(n)) bg='#a97d4f';
+  return `<span style="display:inline-block;width:.75rem;height:.75rem;border-radius:3px;background:${bg};border:1px solid rgba(255,255,255,.25);vertical-align:-1px;margin-right:.4rem;flex-shrink:0;"></span>`;
+}
+
+function renderCoresTab(){
+  const cont=document.getElementById('cor-content');
+  const cardsEl=document.getElementById('cor-cards');
+  const notaEl=document.getElementById('cor-nota');
+  const deEl=document.getElementById('cor-de');
+  const ateEl=document.getElementById('cor-ate');
+  const famEl=document.getElementById('cor-fam');
+  const fixaEl=document.getElementById('cor-base-fixa');
+  if(!cont)return;
+  if(PERIODOS.length<2){
+    cont.innerHTML='<p style="color:var(--text-muted);padding:2rem;">Carregue pelo menos 2 períodos para comparar cores.</p>';
+    if(cardsEl)cardsEl.innerHTML='';if(notaEl)notaEl.innerHTML='';return;
+  }
+  const {meses,cores,fora}=buildCores();
+
+  // Selects de período, preservando a escolha do usuário
+  const opts=meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(deEl.options.length!==meses.length){const v=deEl.value;deEl.innerHTML=opts;deEl.value=(v&&meses.includes(v))?v:meses[meses.length-2];}
+  if(ateEl.options.length!==meses.length){const v=ateEl.value;ateEl.innerHTML=opts;ateEl.value=(v&&meses.includes(v))?v:meses[meses.length-1];}
+  const mesDe=deEl.value, mesAte=ateEl.value;
+
+  // Famílias presentes
+  const famsPresentes=new Set();
+  for(const c of cores.values()) for(const it of c.itens.values()) famsPresentes.add(it.fam);
+  const famsOrd=[...famsPresentes].sort();
+  if(famEl.options.length!==famsOrd.length+1){
+    const v=famEl.value;
+    famEl.innerHTML='<option value="">Todas</option>'+famsOrd.map(f=>`<option value="${f}">${FAMILY_NAMES[f]||f}</option>`).join('');
+    if(v&&famsOrd.includes(v))famEl.value=v;
+  }
+  const famFiltro=famEl.value;
+  const baseFixa=!!(fixaEl&&fixaEl.checked);
+
+  if(mesDe===mesAte){
+    cont.innerHTML='<p style="color:var(--text-muted);padding:2rem;">Escolha dois períodos diferentes para comparar.</p>';
+    if(cardsEl)cardsEl.innerHTML='';if(notaEl)notaEl.innerHTML='';return;
+  }
+
+  const soma=(itens,mes,campo)=>itens.reduce((t,i)=>t+((campo==='q'?i.porMesQ:i.porMes)[mes]||0),0);
+  const linhas=[];
+  let itensForaDaBase=0;
+  for(const c of cores.values()){
+    let itens=[...c.itens.values()];
+    if(famFiltro) itens=itens.filter(i=>i.fam===famFiltro);
+    if(baseFixa){
+      const antes=itens.length;
+      itens=itens.filter(i=>(i.porMes[mesDe]||0)>0&&(i.porMes[mesAte]||0)>0);
+      itensForaDaBase+=antes-itens.length;
+    }
+    if(!itens.length)continue;
+    const fatDe=soma(itens,mesDe,'f'), fatAte=soma(itens,mesAte,'f');
+    if(!fatDe&&!fatAte)continue;
+    linhas.push({
+      suf:c.suf, nome:c.nome, fatDe, fatAte,
+      qtdDe:soma(itens,mesDe,'q'), qtdAte:soma(itens,mesAte,'q'),
+      skusDe:itens.filter(i=>(i.porMes[mesDe]||0)>0).length,
+      skusAte:itens.filter(i=>(i.porMes[mesAte]||0)>0).length,
+      porMes:meses.reduce((o,m)=>{o[m]=soma(itens,m,'f');return o;},{}),
+      porMesQ:meses.reduce((o,m)=>{o[m]=soma(itens,m,'q');return o;},{}),
+    });
+  }
+  const totDe=linhas.reduce((t,l)=>t+l.fatDe,0);
+  const totAte=linhas.reduce((t,l)=>t+l.fatAte,0);
+  for(const l of linhas){
+    l.shareDe=totDe>0?l.fatDe/totDe*100:0;
+    l.shareAte=totAte>0?l.fatAte/totAte*100:0;
+    l.deltaPP=l.shareAte-l.shareDe;
+    if(!l.fatDe&&l.fatAte){l.delta=null;l.status='nova';}
+    else if(l.fatDe&&!l.fatAte){l.delta=-100;l.status='saiu';}
+    else{
+      l.delta=(l.fatAte-l.fatDe)/l.fatDe*100;
+      l.status=l.delta>=COR_LIMITE?'subiu':l.delta<=-COR_LIMITE?'desceu':'estavel';
+    }
+    l.deltaQtd=l.qtdDe>0?(l.qtdAte-l.qtdDe)/l.qtdDe*100:null;
+  }
+  linhas.sort((a,b)=>b.fatAte-a.fatAte||b.fatDe-a.fatDe);
+
+  if(!linhas.length){
+    cont.innerHTML='<p style="color:var(--text-muted);padding:2rem;">Nenhuma cor com faturamento nesse recorte.</p>';
+    if(cardsEl)cardsEl.innerHTML='';if(notaEl)notaEl.innerHTML='';return;
+  }
+
+  // Cards
+  const comDelta=linhas.filter(l=>l.delta!==null&&l.fatDe>0);
+  const maiorAlta=comDelta.slice().sort((a,b)=>b.delta-a.delta)[0];
+  const maiorQueda=comDelta.slice().sort((a,b)=>a.delta-b.delta)[0];
+  const lider=linhas[0];
+  const pctS=v=>(v>=0?'+':'')+v.toFixed(1).replace('.',',')+'%';
+  if(cardsEl){
+    const card=(cls,val,lbl,sub)=>`<div class="mov-card ${cls}" style="cursor:default;">
+      <div class="mov-card-val" style="font-size:1.15rem;">${val}</div>
+      <div class="mov-card-lbl">${lbl}</div>
+      ${sub?`<div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem;">${sub}</div>`:''}
+    </div>`;
+    cardsEl.innerHTML=
+      card('','🌈 '+linhas.length,'Cores no recorte',`${mesDe} → ${mesAte}`)+
+      card('up',maiorAlta?`↑ ${maiorAlta.nome}`:'—','Maior alta',maiorAlta?pctS(maiorAlta.delta)+' · '+fmtBRL(maiorAlta.fatAte):'')+
+      card('down',maiorQueda?`↓ ${maiorQueda.nome}`:'—','Maior queda',maiorQueda?pctS(maiorQueda.delta)+' · '+(maiorQueda.fatAte?fmtBRL(maiorQueda.fatAte):'saiu do mix'):'')+
+      card('stable',lider.nome,'Líder de faturamento',fmtPct(lider.shareAte)+' do total em '+mesAte);
+  }
+
+  const badge=st=>({
+    subiu:'<span class="badge-up">↑ SUBIU</span>',
+    desceu:'<span class="badge-down">↓ DESCEU</span>',
+    nova:'<span class="badge-new">+ NOVA</span>',
+    saiu:'<span class="badge-out">− SAIU</span>',
+    estavel:'<span class="badge-stable">= ESTÁVEL</span>',
+  })[st]||'';
+  const dl=v=>v===null?'<span style="color:var(--text-muted)">—</span>':
+    `<span style="color:${v>0?'#4ade80':v<0?'#f87171':'var(--text-muted)'};font-weight:700;">${pctS(v)}</span>`;
+  const pp=v=>`<span style="color:${v>0.05?'#4ade80':v<-0.05?'#f87171':'var(--text-muted)'};font-weight:600;">${(v>=0?'+':'')+v.toFixed(1).replace('.',',')} p.p.</span>`;
+
+  const tabela=`
+  <div class="table-scroll" style="overflow-x:auto;">
+  <table class="data-table" style="width:100%;">
+    <thead><tr>
+      <th>Cor</th><th style="text-align:center;">Cód.</th><th style="text-align:center;">SKUs</th>
+      <th style="text-align:right;">Fat. ${mesDe}</th><th style="text-align:right;">Fat. ${mesAte}</th><th style="text-align:right;">Δ FAT.</th>
+      <th style="text-align:right;">Share ${mesDe}</th><th style="text-align:right;">Share ${mesAte}</th><th style="text-align:right;">Δ SHARE</th>
+      <th style="text-align:right;">Δ UN.</th><th>Status</th>
+    </tr></thead>
+    <tbody>${linhas.map(l=>`<tr>
+      <td style="white-space:nowrap;font-weight:600;">${_corSwatch(l.nome)}${l.nome}</td>
+      <td style="text-align:center;font-family:monospace;font-size:.74rem;color:var(--text-muted);">${l.suf}</td>
+      <td style="text-align:center;">${l.skusAte}${l.skusAte!==l.skusDe?`<span style="color:var(--text-muted);font-size:.72rem;"> (era ${l.skusDe})</span>`:''}</td>
+      <td style="text-align:right;">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
+      <td style="text-align:right;font-weight:600;">${l.fatAte?fmtBRL(l.fatAte):'—'}</td>
+      <td style="text-align:right;">${dl(l.delta)}</td>
+      <td style="text-align:right;color:var(--text-muted);">${fmtPct(l.shareDe)}</td>
+      <td style="text-align:right;">${fmtPct(l.shareAte)}</td>
+      <td style="text-align:right;">${pp(l.deltaPP)}</td>
+      <td style="text-align:right;">${dl(l.deltaQtd)}</td>
+      <td>${badge(l.status)}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  // Mês a mês, para ver se o movimento é tendência ou solavanco de um mês
+  const mensal=`
+  <div class="section-title" style="margin-top:1.6rem;">Faturamento por cor, mês a mês</div>
+  <div class="table-scroll" style="overflow-x:auto;">
+  <table class="data-table" style="width:100%;">
+    <thead><tr><th>Cor</th>${meses.map(m=>`<th style="text-align:right;">${m}</th>`).join('')}</tr></thead>
+    <tbody>${linhas.map(l=>`<tr>
+      <td style="white-space:nowrap;font-weight:600;">${_corSwatch(l.nome)}${l.nome}</td>
+      ${meses.map(m=>`<td style="text-align:right;">${l.porMes[m]?`${fmtBRL(l.porMes[m])}<span style="display:block;font-size:.68rem;color:var(--text-muted);font-weight:400;">${fmtInt(l.porMesQ[m]||0)} un.</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>`).join('')}
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  cont.innerHTML=tabela+mensal;
+
+  if(notaEl){
+    const partes=[];
+    partes.push(`<strong>Como é calculado:</strong> a cor vem dos 3 últimos dígitos do código do produto (Família 3 + Modelo 3 + Cor 3), somando todos os produtos daquela cor no portfólio. Δ FAT. compara ${mesDe} com ${mesAte}; abaixo de ${COR_LIMITE}% de variação a cor é tratada como estável.`);
+    partes.push(`<strong>Δ SHARE</strong> é a participação da cor no faturamento do recorte, em pontos percentuais. É a leitura mais honesta quando o mês inteiro subiu ou caiu: uma cor pode faturar mais e mesmo assim perder espaço no portfólio.`);
+    if(baseFixa) partes.push(`<strong>Base constante ligada:</strong> ${fmtInt(itensForaDaBase)} produto(s) que não faturaram nos dois períodos ficaram de fora, para separar o efeito da cor do efeito de entrada e saída de produto.`);
+    else partes.push(`<strong>Atenção ao mix:</strong> sem a base constante, uma cor pode cair só porque um modelo saiu de linha. Ligue "Base constante" para comparar apenas produtos presentes nos dois períodos.`);
+    if(fora) partes.push(`${fmtInt(fora)} produto(s) com código fora do padrão de 9 dígitos não entraram nesta análise.`);
+    notaEl.innerHTML=partes.map(t=>`<p style="margin:.35rem 0;">${t}</p>`).join('');
+  }
 }
 
 // ====================================================================
