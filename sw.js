@@ -4,11 +4,12 @@
    - assets do próprio site (ícones/manifest): cache-first
    - Google Fonts: cache oportunista (stale-while-revalidate)
 */
-const VERSION = 'curva-abc-v3';
+const VERSION = 'curva-abc-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/logo-patrimar.png',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-192-maskable.png',
