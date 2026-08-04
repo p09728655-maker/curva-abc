@@ -1559,7 +1559,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
 
 </div><!-- end dashboard scroll area -->
 <button id="btn-scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Voltar ao topo">↑</button>
-  <footer><img class="logo-rodape" src="logo-patrimar.png" alt="Patrimar Móveis">Dashboard Curva ABC — Patrimar &mdash; Análise analítica avançada &mdash; <span id="footer-date"></span><span id="footer-periodo"></span> &mdash; Desenvolvido por <strong>Oderli Garcia</strong></footer>
+  <footer><img class="logo-rodape" src="logo-patrimar.png" alt="Patrimar Móveis">Dashboard Curva ABC — Patrimar &mdash; Análise analítica avançada &mdash; <span id="footer-date"></span><span id="footer-periodo"></span> &mdash; Desenvolvido por <strong>PPCP</strong></footer>
 </div>
 
 <script>
@@ -4063,6 +4063,16 @@ function _colorLabel(desc,prefix){
 // ("BRANCO ACETINAD") e mistura cor com medida.
 // ====================================================================
 const COR_LIMITE=5; // ± % a partir do qual a cor deixa de ser "estável"
+// Nomes fixos por código. O que estiver aqui vence a leitura automática das
+// descrições — serve para quando a planilha não deixa o nome claro.
+const CORES_NOMES={
+  // '112':'Alecrim',
+};
+// Sufixos que são a mesma cor no catálogo e devem somar numa linha só.
+// A coluna Cód. continua mostrando todos os sufixos do grupo.
+const CORES_GRUPOS={
+  '002':'Rosa', '004':'Rosa', '009':'Rosa',
+};
 // Vocabulário de cor. Serve para jogar fora o que vem antes da cor na
 // descrição — "...EVORA C/BANQ OF" não é a cor "C/BANQ OF".
 const COR_VOCAB=/^(BRANCO|PRETO|OFF?|WHITE|CINAMOMO|CUMARU|ALECRIM|GRAFITE|GRAFIT\w*|WHISKY|ROSA|AZUL|CINZA|NATURE|NATURAL|ACETINAD\w*|REAL|VERDE|AMARELO|BEGE|CAFE|TABACO|TERRACOTA|FREIJO|CARVALHO|NOGUEIRA|IPE|MEL|AMENDOA|NUDE|CONCRETO|MARROM|CARAMELO|AVELA)$/;
@@ -4105,8 +4115,11 @@ function buildCores(periodos){
       const cod=String(r[COL.COD]||'').replace(/[.\s]/g,'').trim();
       if(!/^\d{9}$/.test(cod)){ if(cod) fora.add(cod); continue; }
       const suf=cod.slice(6), mod=cod.slice(0,6), fam=cod.slice(0,3);
-      let c=cores.get(suf);
-      if(!c){c={suf,itens:new Map(),nomes:new Map()};cores.set(suf,c);}
+      const grupo=CORES_GRUPOS[suf]||null;
+      const chave=grupo?('g:'+grupo):suf;
+      let c=cores.get(chave);
+      if(!c){c={suf:chave,grupo,sufs:new Set(),itens:new Map(),nomes:new Map()};cores.set(chave,c);}
+      c.sufs.add(suf);
       let it=c.itens.get(cod);
       if(!it){it={cod,fam,mod,desc:String(r[COL.DESC]||'').trim(),porMes:{},porMesQ:{}};c.itens.set(cod,it);}
       it.porMes[p.label]=(it.porMes[p.label]||0)+num(r,COL.FAT);
@@ -4118,18 +4131,28 @@ function buildCores(periodos){
     }
   }
   // A planilha corta descrições, então o mesmo sufixo aparece como
-  // "PRETO ACETINADO/CINAMOMO" e "PRETO ACETINADO/CI". O rótulo truncado é
-  // prefixo do completo — vence quem absorve os outros.
+  // "PRETO ACETINADO/CINAMOMO" e "PRETO ACETINADO/CI". Truncagem corta no meio
+  // de uma palavra — é isso que distingue o rótulo cortado de um nome mais
+  // curto porém completo: "ALECRIM" não é "ALECRIM/CINAMOMO" cortado, ali
+  // termina um segmento inteiro e os dois são leituras diferentes.
+  const truncadoDe=(completo,curto)=>completo.length>curto.length&&
+    completo.startsWith(curto)&&!/[\s/\-]/.test(completo[curto.length]);
   for(const c of cores.values()){
-    const ent=[...c.nomes.entries()];
+    const ent=[...c.nomes.entries()].sort((a,b)=>b[1]-a[1]);
     let melhor=null,best=-1;
     for(const [a,na] of ent){
       let sc=na;
-      for(const [b,nb] of ent) if(b!==a&&a.startsWith(b)) sc+=nb;
-      if(sc>best||(sc===best&&a.length>(melhor||'').length)){melhor=a;best=sc;}
+      for(const [b,nb] of ent) if(b!==a&&truncadoDe(a,b)) sc+=nb;
+      // empate resolvido pelo rótulo mais frequente, não pelo mais longo
+      if(sc>best){melhor=a;best=sc;}
     }
-    c.nome=melhor||('Cor '+c.suf);
-    c.semNome=!melhor;
+    c.cod=[...c.sufs].sort().join('/');
+    // grupo definido à mão vence a leitura das descrições, que pode variar
+    // entre os sufixos agrupados
+    c.nome=CORES_NOMES[c.cod]||c.grupo||melhor||('Cor '+c.cod);
+    c.semNome=!melhor&&!c.grupo&&!CORES_NOMES[c.cod];
+    // guarda o que foi lido das descrições, para dar para auditar na tela
+    c.rotulos=ent.map(([r,n])=>`${r} (${n})`);
   }
   return {meses,cores,fora:fora.size};
 }
@@ -4211,7 +4234,7 @@ function renderCoresTab(){
     const bDe=soma(mesmaBase,mesDe,'f'), bAte=soma(mesmaBase,mesAte,'f');
     const tDe=soma(todos,mesDe,'f'), tAte=soma(todos,mesAte,'f');
     linhas.push({
-      suf:c.suf, nome:c.nome, fatDe, fatAte,
+      suf:c.cod, nome:c.nome, rotulos:c.rotulos||[], fatDe, fatAte,
       qtdDe:soma(itens,mesDe,'q'), qtdAte:soma(itens,mesAte,'q'),
       skusDe:itens.filter(i=>(i.porMes[mesDe]||0)>0).length,
       skusAte:itens.filter(i=>(i.porMes[mesAte]||0)>0).length,
@@ -4285,7 +4308,7 @@ function renderCoresTab(){
   const tabela=`
   <div class="table-scroll" style="overflow-x:auto;">
   <table class="data-table" style="width:100%;">
-    <colgroup><col class="cor-col"><col style="width:58px;"><col style="width:82px;">
+    <colgroup><col class="cor-col"><col style="width:84px;"><col style="width:82px;">
       <col><col><col style="width:88px;"><col style="width:112px;"><col style="width:96px;"><col style="width:96px;">
       <col style="width:92px;"><col style="width:82px;"><col style="width:104px;"></colgroup>
     <thead><tr>
@@ -4295,7 +4318,7 @@ function renderCoresTab(){
       <th class="num">Δ UN.</th><th>Status</th>
     </tr></thead>
     <tbody>${linhas.map(l=>`<tr>
-      <td style="font-weight:600;"><span style="display:flex;align-items:center;min-width:0;">${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
+      <td style="font-weight:600;" title="código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}"><span style="display:flex;align-items:center;min-width:0;">${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
       <td class="num" style="font-family:monospace;font-size:.74rem;color:var(--text-muted);">${l.suf}</td>
       <td class="num">${l.skusAte}${l.skusAte!==l.skusDe?`<span style="color:var(--text-muted);font-size:.72rem;"> (era ${l.skusDe})</span>`:''}</td>
       <td class="num">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
@@ -4340,7 +4363,7 @@ function renderCoresTab(){
       const larg=Math.max(2,Math.abs(l.impacto)/maxAbs*100);
       const pos=l.impacto>=0;
       return `<div class="cor-fast-row">
-        <span class="cor-fast-nome" title="${l.nome} · código ${l.suf}">${_corSwatch(l.nome)}<span class="cor-fast-txt">${l.nome}</span><span class="cor-fast-cod">${l.suf}</span></span>
+        <span class="cor-fast-nome" title="${l.nome} · código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}">${_corSwatch(l.nome)}<span class="cor-fast-txt">${l.nome}</span><span class="cor-fast-cod">${l.suf}</span></span>
         <span class="cor-fast-bar">
           <span class="cor-fast-neg">${pos?'':`<i style="width:${larg}%"></i>`}</span>
           <span class="cor-fast-zero"></span>
