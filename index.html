@@ -272,6 +272,15 @@ header{background:var(--card);color:var(--text);padding:0 1.5rem;display:flex;al
 .cor-fast-val{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
 .cor-fast-pct{text-align:right;color:var(--text-muted);font-size:.78rem;font-variant-numeric:tabular-nums;}
 .cor-fast-mais{margin-top:.6rem;font-size:.75rem;color:var(--text-muted);}
+/* linha de cor clicável → lista de produtos para conferência */
+.cor-row{cursor:pointer;}
+.cor-row:hover td{background:rgba(255,255,255,.03);}
+.cor-chev{display:inline-block;margin-right:.35rem;font-size:.68rem;color:var(--text-muted);transition:transform .15s;flex-shrink:0;}
+.cor-row.aberta .cor-chev{transform:rotate(90deg);}
+.cor-det>td{background:rgba(255,255,255,.02);padding:.6rem .8rem 1rem;}
+.cor-det-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:.2rem 0 .5rem;}
+.cor-det table{font-size:.8rem;}
+.cor-det .fora-base{opacity:.55;}
 /* main é flex column: sem min-width:0 a seção não encolhe e a tabela larga
    empurra a página inteira em vez de rolar dentro do próprio scroller. */
 #sec-cores{min-width:0;}
@@ -4157,6 +4166,23 @@ function buildCores(periodos){
   return {meses,cores,fora:fora.size};
 }
 
+// Clique na linha da cor → mostra/esconde a lista de produtos logo abaixo
+function toggleCorProdutos(tr){
+  const det=tr.nextElementSibling;
+  if(!det||!det.classList.contains('cor-det'))return;
+  const abrir=det.style.display==='none';
+  det.style.display=abrir?'':'none';
+  tr.classList.toggle('aberta',abrir);
+}
+// Clique no bloco de impacto → rola até a linha na tabela e abre a lista
+function abrirCorProdutos(suf){
+  const tr=document.querySelector(`#cor-content tr.cor-row[data-suf="${suf}"]`);
+  if(!tr)return;
+  const det=tr.nextElementSibling;
+  if(det&&det.style.display==='none')toggleCorProdutos(tr);
+  tr.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
 // Amostra visual — só ilustrativa, derivada do nome da cor
 function _corSwatch(nome){
   const n=String(nome||'').toUpperCase();
@@ -4235,6 +4261,13 @@ function renderCoresTab(){
     const tDe=soma(todos,mesDe,'f'), tAte=soma(todos,mesAte,'f');
     linhas.push({
       suf:c.cod, nome:c.nome, rotulos:c.rotulos||[], fatDe, fatAte,
+      // lista completa (respeitando o filtro de família) para o clique abrir
+      // e dar para conferir produto a produto de onde saiu cada número
+      prods:todos.map(i=>({cod:i.cod,desc:i.desc,fam:i.fam,
+        fatDe:i.porMes[mesDe]||0,fatAte:i.porMes[mesAte]||0,
+        qDe:i.porMesQ[mesDe]||0,qAte:i.porMesQ[mesAte]||0,
+        naBase:(i.porMes[mesDe]||0)>0&&(i.porMes[mesAte]||0)>0}))
+        .sort((a,b)=>b.fatAte-a.fatAte||b.fatDe-a.fatDe),
       qtdDe:soma(itens,mesDe,'q'), qtdAte:soma(itens,mesAte,'q'),
       skusDe:itens.filter(i=>(i.porMes[mesDe]||0)>0).length,
       skusAte:itens.filter(i=>(i.porMes[mesAte]||0)>0).length,
@@ -4305,6 +4338,30 @@ function renderCoresTab(){
     `<span style="color:${v>0?'#4ade80':v<0?'#f87171':'var(--text-muted)'};font-weight:700;">${pctS(v)}</span>`;
   const pp=v=>`<span style="color:${v>0.05?'#4ade80':v<-0.05?'#f87171':'var(--text-muted)'};font-weight:600;">${(v>=0?'+':'')+v.toFixed(1).replace('.',',')} p.p.</span>`;
 
+  // Sub-tabela de produtos da cor — é o que abre no clique, para conferir
+  // por que um mesmo nome aparece em códigos diferentes (OFF WHITE 006 vs 011)
+  const subProds=l=>{
+    const foraBase=l.prods.filter(p=>!p.naBase).length;
+    return `<div class="cor-det-head">${l.prods.length} produto(s) na cor ${l.nome} — código ${l.suf}${baseFixa&&foraBase?` · <span style="font-weight:400;text-transform:none;letter-spacing:0;">${foraBase} fora da base constante (esmaecidos, não somam na linha acima)</span>`:''}</div>
+    <table class="data-table" style="width:100%;">
+      <thead><tr><th style="width:110px;">Código</th><th style="width:110px;">Família</th><th>Produto</th>
+        <th class="num">Fat. ${mesDe}</th><th class="num">Fat. ${mesAte}</th><th class="num">Δ</th>
+        <th class="num">Un. ${mesDe}</th><th class="num">Un. ${mesAte}</th></tr></thead>
+      <tbody>${l.prods.map(p=>{
+        const d=p.fatDe>0?(p.fatAte-p.fatDe)/p.fatDe*100:null;
+        return `<tr${baseFixa&&!p.naBase?' class="fora-base"':''}>
+          <td style="font-family:monospace;font-size:.74rem;color:var(--text-muted);">${p.cod}</td>
+          <td style="color:var(--text-muted);">${FAMILY_NAMES[p.fam]||p.fam}</td>
+          <td>${p.desc}</td>
+          <td class="num">${p.fatDe?fmtBRL(p.fatDe):'—'}</td>
+          <td class="num" style="font-weight:600;">${p.fatAte?fmtBRL(p.fatAte):'—'}</td>
+          <td class="num">${dl(d)}</td>
+          <td class="num">${p.qDe?fmtInt(p.qDe):'—'}</td>
+          <td class="num">${p.qAte?fmtInt(p.qAte):'—'}</td>
+        </tr>`;}).join('')}</tbody>
+    </table>`;
+  };
+
   const tabela=`
   <div class="table-scroll" style="overflow-x:auto;">
   <table class="data-table" style="width:100%;">
@@ -4317,8 +4374,8 @@ function renderCoresTab(){
       <th class="num">Share ${mesDe}</th><th class="num">Share ${mesAte}</th><th class="num">Δ SHARE</th>
       <th class="num">Δ UN.</th><th>Status</th>
     </tr></thead>
-    <tbody>${linhas.map(l=>`<tr>
-      <td style="font-weight:600;" title="código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}"><span style="display:flex;align-items:center;min-width:0;">${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
+    <tbody>${linhas.map(l=>`<tr class="cor-row" data-suf="${l.suf}" onclick="toggleCorProdutos(this)">
+      <td style="font-weight:600;" title="Clique para ver os produtos — código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}"><span style="display:flex;align-items:center;min-width:0;"><span class="cor-chev">▸</span>${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
       <td class="num" style="font-family:monospace;font-size:.74rem;color:var(--text-muted);">${l.suf}</td>
       <td class="num">${l.skusAte}${l.skusAte!==l.skusDe?`<span style="color:var(--text-muted);font-size:.72rem;"> (era ${l.skusDe})</span>`:''}</td>
       <td class="num">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
@@ -4330,7 +4387,8 @@ function renderCoresTab(){
       <td class="num">${pp(l.deltaPP)}</td>
       <td class="num">${dl(l.deltaQtd)}</td>
       <td>${badge(l.status)}</td>
-    </tr>`).join('')}</tbody>
+    </tr>
+    <tr class="cor-det" style="display:none;"><td colspan="12">${subProds(l)}</td></tr>`).join('')}</tbody>
   </table></div>`;
 
   // Mês a mês, para ver se o movimento é tendência ou solavanco de um mês
@@ -4362,8 +4420,8 @@ function renderCoresTab(){
     ${mostra.map(l=>{
       const larg=Math.max(2,Math.abs(l.impacto)/maxAbs*100);
       const pos=l.impacto>=0;
-      return `<div class="cor-fast-row">
-        <span class="cor-fast-nome" title="${l.nome} · código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}">${_corSwatch(l.nome)}<span class="cor-fast-txt">${l.nome}</span><span class="cor-fast-cod">${l.suf}</span></span>
+      return `<div class="cor-fast-row" style="cursor:pointer;" onclick="abrirCorProdutos('${l.suf}')">
+        <span class="cor-fast-nome" title="Clique para ver os produtos — ${l.nome} · código ${l.suf}${l.rotulos.length?' — lido das descrições: '+l.rotulos.join(', '):''}">${_corSwatch(l.nome)}<span class="cor-fast-txt">${l.nome}</span><span class="cor-fast-cod">${l.suf}</span></span>
         <span class="cor-fast-bar">
           <span class="cor-fast-neg">${pos?'':`<i style="width:${larg}%"></i>`}</span>
           <span class="cor-fast-zero"></span>
@@ -4376,11 +4434,12 @@ function renderCoresTab(){
     ${ocultas>0?`<div class="cor-fast-mais">+ ${ocultas} cores com impacto menor — ver tabela abaixo</div>`:''}
   </div>`;
 
-  cont.innerHTML=rapido+`<div class="section-title" style="margin-top:1.6rem;">Detalhamento por cor</div>`+tabela+mensal;
+  cont.innerHTML=rapido+`<div class="section-title" style="margin-top:1.6rem;">Detalhamento por cor <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:.74rem;">— clique numa cor para ver os produtos</span></div>`+tabela+mensal;
 
   if(notaEl){
     const partes=[];
     partes.push(`<strong>Como é calculado:</strong> a cor vem dos 3 últimos dígitos do código do produto (Família 3 + Modelo 3 + Cor 3), somando todos os produtos daquela cor no portfólio. Δ FAT. compara ${mesDe} com ${mesAte}; abaixo de ${COR_LIMITE}% de variação a cor é tratada como estável.`);
+    partes.push(`<strong>Nome repetido em linhas diferentes</strong> (ex.: OFF WHITE 006 e 011) não é linha duplicada: são códigos de cor distintos no cadastro que carregam a mesma descrição. Clique na cor para abrir a lista de produtos e conferir; se forem a mesma cor no catálogo, dá para somá-las numa linha só, como já é feito com o Rosa (002/004/009).`);
     partes.push(`<strong>Δ SHARE</strong> é a participação da cor no faturamento do recorte, em pontos percentuais. É a leitura mais honesta quando o mês inteiro subiu ou caiu: uma cor pode faturar mais e mesmo assim perder espaço no portfólio.`);
     if(baseFixa) partes.push(`<strong>Base constante ligada (padrão):</strong> ${fmtInt(itensForaDaBase)} produto(s) que não faturaram nos dois períodos ficaram de fora, para separar o efeito da cor do efeito de entrada e saída de produto. Por isso os valores desta tela <em>não fecham</em> com o faturamento total do mês — a coluna Δ C/ ENTRADAS mostra a variação com tudo incluído, e desligar o filtro traz a tela inteira para essa base.`);
     else partes.push(`<strong>Base constante desligada:</strong> os valores incluem produtos que entraram ou saíram do mix, então fecham com o faturamento do período. A coluna Δ MESMA BASE repete a conta só com os produtos presentes nos dois períodos — a diferença entre as duas é o efeito de entrada e saída de produto.`);
@@ -4460,6 +4519,9 @@ tr{page-break-inside:avoid;}
 .badge-up{background:#dcfce7;color:#15803d;}.badge-down{background:#fee2e2;color:#b91c1c;}
 .badge-new{background:#dbeafe;color:#1d4ed8;}.badge-out{background:#ffedd5;color:#c2410c;}
 .badge-stable{background:#f1f5f9;color:#64748b;}
+/* a lista de produtos que abre no clique é ferramenta de tela; no papel fica só o consolidado */
+.cor-chev{display:none;}
+.cor-det{display:none!important;}
 #cor-nota,.p-nota{font-size:6.5pt;color:#6b7a99;line-height:1.5;margin-top:3mm;border-top:1px solid #e3e8f0;padding-top:2mm;}
 #cor-nota p{margin:.8mm 0;}
 </style></head><body>
