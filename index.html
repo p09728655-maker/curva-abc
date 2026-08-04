@@ -417,30 +417,10 @@ main{flex:1;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem
 .kpi-card.red{border-left-color:#dc2626;}
 .kpi-card.teal{border-left-color:#0d9488;}
 /* Ticket Médio card highlight when EXC filtered */
-.kpi-card.purple.ticket-exc-active{border-left-color:#7c3aed;background:rgba(124,58,237,.1);box-shadow:0 0 0 2px rgba(124,58,237,.4),var(--shadow);}
 
 /* COMPARATIVO TICKET POR TIPO */
-#sec-ticket-compare{display:none;}
-#sec-ticket-compare.visible{display:block;}
-.ticket-compare-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;}
 @media(max-width:1100px){.ticket-compare-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:600px){.ticket-compare-grid{grid-template-columns:1fr;}}
-.tc-card{background:var(--card);border-radius:var(--radius);padding:.85rem 1rem;box-shadow:var(--shadow);border:1px solid var(--border);border-left-width:4px;transition:box-shadow .2s,transform .2s;}
-.tc-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
-.tc-card.tc-linha{border-left-color:#16a34a;}
-.tc-card.tc-lanc{border-left-color:#0891b2;}
-.tc-card.tc-exc{border-left-color:#7c3aed;}
-.tc-card.tc-impacto{border-left-color:#7c3aed;background:rgba(124,58,237,.08);}
-.tc-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.3rem;}
-.tc-value{font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.2;}
-.tc-sub{font-size:.73rem;color:var(--text-muted);margin-top:.25rem;}
-.tc-delta{display:inline-block;font-size:.75rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;margin-top:.3rem;}
-.tc-delta.down{background:rgba(220,38,38,.15);color:#f87171;}
-.tc-delta.up{background:rgba(34,197,94,.15);color:#4ade80;}
-.tc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.3rem;vertical-align:middle;}
-.tc-dot-linha{background:#16a34a;}
-.tc-dot-lanc{background:#0891b2;}
-.tc-dot-exc{background:#7c3aed;}
 
 /* ================================================================
    COMPENSAÇÃO EXCLUSIVOS — redesign visual de alto impacto
@@ -580,64 +560,18 @@ main{flex:1;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem
 .comp-hero-result.animating{animation:comp-pop .5s ease forwards;}
 
 /* ÍNDICE DE DEPENDÊNCIA DOS EXCLUSIVOS (IDE) */
-#sec-ide{display:none;}
-#sec-ide.visible{display:block;}
-.ide-wrapper{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;}
-@media(max-width:900px){.ide-wrapper{grid-template-columns:1fr;}}
 
 /* Card principal IDE */
-.ide-hero{border-radius:var(--radius);padding:1.5rem 1.75rem;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:.5rem;border:2px solid;}
-.ide-hero.ide-baixa {background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#86efac;}
-.ide-hero.ide-moderada{background:linear-gradient(135deg,#fefce8,#fef9c3);border-color:#fde047;}
-.ide-hero.ide-alta  {background:linear-gradient(135deg,#fff1f2,#ffe4e6);border-color:#fca5a5;}
 
-.ide-eyebrow{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;}
-.ide-baixa  .ide-eyebrow{color:#15803d;}
-.ide-moderada .ide-eyebrow{color:#854d0e;}
-.ide-alta   .ide-eyebrow{color:#991b1b;}
 
-.ide-pct-row{display:flex;align-items:baseline;gap:.5rem;margin:.2rem 0;}
-.ide-pct{font-size:3rem;font-weight:800;line-height:1;}
-.ide-baixa  .ide-pct{color:#16a34a;}
-.ide-moderada .ide-pct{color:#ca8a04;}
-.ide-alta   .ide-pct{color:#dc2626;}
-.ide-pct-label{font-size:.85rem;font-weight:600;}
-.ide-baixa  .ide-pct-label{color:#15803d;}
-.ide-moderada .ide-pct-label{color:#92400e;}
-.ide-alta   .ide-pct-label{color:#991b1b;}
 
 /* Badge de classificação */
-.ide-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .75rem;border-radius:20px;font-size:.78rem;font-weight:700;width:fit-content;}
-.ide-badge.baixa  {background:#22c55e;color:#fff;}
-.ide-badge.moderada{background:#facc15;color:#713f12;}
-.ide-badge.alta   {background:#ef4444;color:#fff;}
-.ide-badge-dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.7;}
 
 /* Barra de esforço */
-.ide-bar-wrap{margin:.5rem 0 .25rem;}
-.ide-bar-label{font-size:.68rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em;}
-.ide-bar-track{background:rgba(0,0,0,.08);border-radius:8px;height:10px;overflow:hidden;width:100%;}
-.ide-bar-fill{height:100%;border-radius:8px;transition:width .6s ease;}
-.ide-baixa  .ide-bar-fill{background:linear-gradient(90deg,#22c55e,#4ade80);}
-.ide-moderada .ide-bar-fill{background:linear-gradient(90deg,#ca8a04,#facc15);}
-.ide-alta   .ide-bar-fill{background:linear-gradient(90deg,#dc2626,#f87171);}
-.ide-bar-ticks{display:flex;justify-content:space-between;font-size:.6rem;color:var(--text-muted);margin-top:.2rem;padding:0 1px;opacity:.7;}
 
 /* Insight IDE */
-.ide-insight{border-radius:6px;padding:.65rem .9rem;font-size:.8rem;line-height:1.5;margin-top:.25rem;}
-.ide-baixa  .ide-insight{background:rgba(22,163,74,.08); color:#14532d;}
-.ide-moderada .ide-insight{background:rgba(202,138,4,.10);color:#78350f;}
-.ide-alta   .ide-insight{background:rgba(220,38,38,.08); color:#7f1d1d;}
 
 /* Cards de apoio do IDE */
-.ide-support{display:flex;flex-direction:column;gap:.75rem;}
-.ide-support-card{background:var(--card);border-radius:var(--radius);padding:.9rem 1.1rem;box-shadow:var(--shadow);border:1px solid var(--border);border-left-width:4px;}
-.ide-support-card.green {border-left-color:#16a34a;}
-.ide-support-card.yellow{border-left-color:#ca8a04;}
-.ide-support-card.red   {border-left-color:#dc2626;}
-.ide-support-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.25rem;}
-.ide-support-val{font-size:1.25rem;font-weight:700;color:var(--text);}
-.ide-support-sub{font-size:.73rem;color:var(--text-muted);margin-top:.15rem;}
 
 /* SUMMARY */
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
@@ -671,14 +605,6 @@ main{flex:1;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem
 .chart-card .chart-wrap{position:relative;height:240px;}
 
 /* INSIGHTS */
-#insights-card{background:linear-gradient(135deg,rgba(255,92,31,.07),rgba(255,92,31,.02));border-radius:var(--radius);padding:1.25rem 1.4rem;box-shadow:var(--shadow);border:1px solid rgba(255,92,31,.2);}
-#insights-card h4{font-size:.95rem;font-weight:700;color:var(--accent);margin-bottom:.85rem;}
-#insights-list{list-style:none;display:flex;flex-direction:column;gap:.55rem;}
-#insights-list li{display:flex;align-items:flex-start;gap:.6rem;font-size:.85rem;color:var(--text);line-height:1.5;}
-#insights-list li::before{content:'▸';color:var(--accent);font-size:.9rem;flex:none;margin-top:.05rem;}
-#insights-list li strong{color:var(--accent);}
-#insights-list li.insight-exc{background:rgba(124,58,237,.06);border-left:3px solid #7c3aed;padding:.4rem .7rem;border-radius:0 6px 6px 0;margin-left:-.1rem;}
-#insights-list li.insight-exc::before{color:#7c3aed;}
 
 /* TABLE */
 .table-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.65rem;margin-bottom:.75rem;}
@@ -743,7 +669,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
   main{padding:.75rem;}
   .kpi-grid{grid-template-columns:repeat(2,1fr)!important;}
   .kpi-value{font-size:1.25rem;}
-  .ticket-compare-grid{grid-template-columns:repeat(2,1fr)!important;}
   #flag-impact-banner{padding:.55rem .85rem;gap:1rem;margin:0 .75rem .4rem;}
   .re-header{padding:.75rem 1rem;gap:.4rem;}
   .re-header h2{font-size:1rem;}
@@ -758,7 +683,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
   .re-table th{padding:.35rem .4rem;font-size:.6rem;}
   .re-table td{padding:.38rem .4rem;}
   .comp-layout{grid-template-columns:1fr!important;}
-  .ide-wrapper{grid-template-columns:1fr!important;}
   .summary-grid{grid-template-columns:1fr!important;}
   .charts-grid{grid-template-columns:1fr!important;}
   .chart-card.wide{grid-column:span 1!important;}
@@ -787,7 +711,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
   .kpi-icon{font-size:1.3rem;}
   .kpi-value{font-size:1.1rem;}
   .kpi-sub{font-size:.7rem;}
-  .ticket-compare-grid{grid-template-columns:1fr!important;}
   #flag-impact-banner{flex-direction:column;gap:.5rem;margin:0 .5rem .35rem;padding:.5rem .75rem;}
   .flag-impact-items{gap:.75rem;}
   .re-header{flex-direction:column;align-items:flex-start;gap:.45rem;padding:.65rem .85rem;}
@@ -807,7 +730,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
   .re-diag{font-size:.78rem;}
   .section-title{font-size:.65rem;}
   .chart-card{padding:.75rem;}
-  .ide-pct-val{font-size:2.5rem!important;}
 }
 
 
@@ -1186,79 +1108,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
             <div class="kpi-sub" id="kpi-ticket-sub">Média por produto</div>
           </div>
         </div>
-        <div class="kpi-card cyan">
-          <div class="kpi-icon">📋</div>
-          <div class="kpi-body">
-            <div class="kpi-label">Qtde de Produtos</div>
-            <div class="kpi-value" id="kpi-prod">—</div>
-            <div class="kpi-sub" id="kpi-prod-sub">—</div>
-          </div>
-        </div>
-      </div>
-      <div class="kpi-grid" style="margin-top:.85rem;" id="kpi-row2">
-        <div class="kpi-card gold">
-          <div class="kpi-icon">⭐</div>
-          <div class="kpi-body">
-            <div class="kpi-label">Concentração Classe A</div>
-            <div class="kpi-value" id="kpi-conc-a">—</div>
-            <div class="kpi-sub">dos produtos classe A (valor)</div>
-          </div>
-        </div>
-        <div class="kpi-card teal">
-          <div class="kpi-icon">🔵</div>
-          <div class="kpi-body">
-            <div class="kpi-label">Produtos Classe A</div>
-            <div class="kpi-value" id="kpi-prod-a">—</div>
-            <div class="kpi-sub" id="kpi-prod-a-sub">—</div>
-          </div>
-        </div>
-        <div class="kpi-card orange">
-          <div class="kpi-icon">🏆</div>
-          <div class="kpi-body">
-            <div class="kpi-label">Maior Produto</div>
-            <div class="kpi-value" id="kpi-top-prod" style="font-size:1rem;white-space:normal;overflow:visible;">—</div>
-            <div class="kpi-sub" id="kpi-top-prod-sub">—</div>
-          </div>
-        </div>
         <div class="kpi-card red">
           <div class="kpi-icon">📈</div>
           <div class="kpi-body">
             <div class="kpi-label">Pareto 80%</div>
             <div class="kpi-value" id="kpi-pareto">—</div>
-            <div class="kpi-sub">geram 80% do fat.</div>
+            <div class="kpi-sub" id="kpi-pareto-sub">geram 80% do faturamento</div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- COMPARATIVO TICKET MÉDIO POR TIPO -->
-    <section id="sec-ticket-compare">
-      <div class="section-title">Comparativo Ticket Médio por Tipo</div>
-      <div class="ticket-compare-grid">
-        <div class="tc-card tc-linha">
-          <div class="tc-label"><span class="tc-dot tc-dot-linha"></span>Em Linha</div>
-          <div class="tc-value" id="tc-val-linha">—</div>
-          <div class="tc-sub" id="tc-sub-linha">—</div>
-        </div>
-        <div class="tc-card tc-lanc">
-          <div class="tc-label"><span class="tc-dot tc-dot-lanc"></span>Lançamento</div>
-          <div class="tc-value" id="tc-val-lanc">—</div>
-          <div class="tc-sub" id="tc-sub-lanc">—</div>
-        </div>
-        <div class="tc-card tc-exc">
-          <div class="tc-label"><span class="tc-dot tc-dot-exc"></span>Exclusivo</div>
-          <div class="tc-value" id="tc-val-exc">—</div>
-          <div class="tc-sub" id="tc-sub-exc">—</div>
-        </div>
-        <div class="tc-card tc-impacto">
-          <div class="tc-label">🔻 Impacto EXC no Ticket Geral</div>
-          <div style="display:flex;flex-direction:column;gap:.15rem;margin-top:.1rem;">
-            <div style="font-size:.7rem;color:var(--text-muted);">Base (Linha + Lanç)</div>
-            <div class="tc-value" style="font-size:1.1rem;" id="tc-base-semexc">—</div>
-            <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem;">Geral (com EXC)</div>
-            <div class="tc-value" style="font-size:1.1rem;" id="tc-base-geral">—</div>
-          </div>
-          <span class="tc-delta" id="tc-impacto-delta">—</span>
         </div>
       </div>
     </section>
@@ -1329,62 +1185,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
       </div>
     </section>
 
-    <!-- ÍNDICE DE DEPENDÊNCIA DOS EXCLUSIVOS -->
-    <section id="sec-ide">
-      <div class="section-title">🧠 Índice de Dependência dos Exclusivos (IDE)</div>
-      <div class="ide-wrapper">
-
-        <!-- Card principal -->
-        <div class="ide-hero" id="ide-hero-card">
-          <div class="ide-eyebrow" id="ide-eyebrow">Análise de Substituibilidade</div>
-
-          <div class="ide-pct-row">
-            <span class="ide-pct" id="ide-pct-val">—</span>
-            <span class="ide-pct-label">% esforço adicional de volume</span>
-          </div>
-
-          <div id="ide-badge-wrap"></div>
-
-          <!-- Barra de esforço -->
-          <div class="ide-bar-wrap">
-            <div class="ide-bar-label">Esforço relativo necessário</div>
-            <div class="ide-bar-track">
-              <div class="ide-bar-fill" id="ide-bar-fill" style="width:0%"></div>
-            </div>
-            <div class="ide-bar-ticks">
-              <span>0%</span><span>10%</span><span>25%</span><span>50%+</span>
-            </div>
-          </div>
-
-          <div class="ide-insight" id="ide-insight-text">—</div>
-        </div>
-
-        <!-- Cards de apoio -->
-        <div class="ide-support">
-          <div class="ide-support-card" id="ide-card-fat">
-            <div class="ide-support-label">💰 Representatividade dos EXC</div>
-            <div class="ide-support-val" id="ide-fat-pct">—</div>
-            <div class="ide-support-sub" id="ide-fat-abs">—</div>
-          </div>
-          <div class="ide-support-card" id="ide-card-qtd">
-            <div class="ide-support-label">📦 Quantidade extra necessária</div>
-            <div class="ide-support-val" id="ide-qtd-extra">—</div>
-            <div class="ide-support-sub" id="ide-qtd-base">—</div>
-          </div>
-          <div class="ide-support-card" id="ide-card-vol">
-            <div class="ide-support-label">📈 Volume atual sem EXC</div>
-            <div class="ide-support-val" id="ide-vol-atual">—</div>
-            <div class="ide-support-sub">unidades Linha + Lançamento</div>
-          </div>
-          <div class="ide-support-card" id="ide-card-ticket">
-            <div class="ide-support-label">🏷️ Ticket médio base (sem EXC)</div>
-            <div class="ide-support-val" id="ide-ticket-base">—</div>
-            <div class="ide-support-sub">referência do cálculo de compensação</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- RESUMO POR CLASSE -->
     <section id="sec-summary">
       <div class="section-title">Análise por Classe</div>
@@ -1418,38 +1218,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
       <div class="section-title">Gráficos e Visualizações</div>
       <div class="charts-grid">
         <div class="chart-card">
-          <h4>Donut — ABC por Faturamento</h4>
-          <div class="chart-wrap"><canvas id="chartDonutVal"></canvas></div>
-        </div>
-        <div class="chart-card">
           <h4>Comparativo ABC — % Produtos vs % Fat vs % Qtd</h4>
           <div class="chart-wrap"><canvas id="chartComparativo"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h4>Distribuição de Estratégias (Top 8)</h4>
-          <div class="chart-wrap"><canvas id="chartEstrategia"></canvas></div>
-        </div>
-        <div class="chart-card wide">
-          <h4>Pareto — Concentração de Faturamento (Top 30)</h4>
-          <div class="chart-wrap"><canvas id="chartPareto"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h4>Matriz Cruzada por Faturamento</h4>
-          <div class="chart-wrap"><canvas id="chartCruzada"></canvas></div>
         </div>
         <div class="chart-card">
           <h4>Top 15 Produtos por Faturamento</h4>
           <div class="chart-wrap"><canvas id="chartTop15"></canvas></div>
         </div>
-      </div>
-    </section>
-
-    <!-- INSIGHTS -->
-    <section id="sec-insights">
-      <div class="section-title">Insights Automáticos</div>
-      <div id="insights-card">
-        <h4>💡 Insights do Portfólio</h4>
-        <ul id="insights-list"></ul>
       </div>
     </section>
 
@@ -1470,14 +1245,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
                 <th>Família</th>
                 <th>Produto</th>
                 <th class="num">Qtd Total</th>
-                <th class="num">Qtd Mensal</th>
                 <th class="num">Faturamento</th>
-                <th class="num">Fat. Mensal</th>
                 <th class="num">Ticket Médio</th>
                 <th class="num">% Fat.</th>
                 <th class="num">% Acumulado</th>
-                <th>ABC Val</th>
-                <th>ABC Qtde</th>
                 <th>Cruzada</th>
                 <th>Flag</th>
                 <th>Estratégia</th>
@@ -2758,7 +2529,6 @@ function resetAll(){
   document.getElementById('summary-val-body').innerHTML='';
   document.getElementById('summary-qtd-body').innerHTML='';
   const _cb=document.getElementById('summary-cruzada-body');if(_cb)_cb.innerHTML='';
-  document.getElementById('insights-list').innerHTML='';
   document.getElementById('flag-impact-banner').classList.remove('visible','mode-exc','mode-lanc','mode-linha');
   activeFlags.clear();
   ['ft-linha','ft-exc','ft-lanc'].forEach(id=>{
@@ -2766,7 +2536,7 @@ function resetAll(){
     if(el)el.classList.remove('active-linha','active-exc','active-lanc');
   });
   document.getElementById('f-familia').innerHTML='<option value="">Todas</option>';
-  ['sec-ticket-compare','sec-compensacao','sec-ide'].forEach(id=>{
+  ['sec-compensacao'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.classList.remove('visible');
   });
@@ -2886,44 +2656,6 @@ function truncate(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
 // ====================================================================
 // TICKET COMPARE
 // ====================================================================
-function renderTicketCompare(){
-  const sec=document.getElementById('sec-ticket-compare');
-  if(!RAW.length){sec.classList.remove('visible');return;}
-  sec.classList.add('visible');
-
-  const linhaRows=RAW.filter(r=>{const f=String(r[COL.FLAG]||'').trim();return f===''||f==='LINHA';});
-  const lancRows =RAW.filter(r=>String(r[COL.FLAG]||'').trim()==='LANÇ');
-  const excRows  =RAW.filter(r=>String(r[COL.FLAG]||'').trim()==='EXC');
-
-  const tLinha=avgTicket(linhaRows);
-  const tLanc =avgTicket(lancRows);
-  const tExc  =avgTicket(excRows);
-  const tSemExc=avgTicket([...linhaRows,...lancRows]);
-  const tGeral =avgTicket(RAW);
-  const delta=tSemExc>0?(tGeral-tSemExc)/tSemExc*100:0;
-
-  document.getElementById('tc-val-linha').textContent=tLinha?fmtBRL(tLinha):'—';
-  document.getElementById('tc-sub-linha').textContent=linhaRows.length?fmtInt(linhaRows.length)+' produtos':'sem produtos';
-  document.getElementById('tc-val-lanc').textContent=tLanc?fmtBRL(tLanc):'—';
-  document.getElementById('tc-sub-lanc').textContent=lancRows.length?fmtInt(lancRows.length)+' produtos':'sem produtos';
-  document.getElementById('tc-val-exc').textContent=tExc?fmtBRL(tExc):'—';
-  document.getElementById('tc-sub-exc').textContent=excRows.length?fmtInt(excRows.length)+' produtos':'sem produtos';
-
-  document.getElementById('tc-base-semexc').textContent=tSemExc?fmtBRL(tSemExc):'—';
-  document.getElementById('tc-base-geral').textContent=tGeral?fmtBRL(tGeral):'—';
-  const deltaEl=document.getElementById('tc-impacto-delta');
-  if(delta<0){
-    deltaEl.textContent='▼ '+Math.abs(delta).toFixed(1)+'% com EXC';
-    deltaEl.className='tc-delta down';
-  }else if(delta>0){
-    deltaEl.textContent='▲ +'+delta.toFixed(1)+'% com EXC';
-    deltaEl.className='tc-delta up';
-  }else{
-    deltaEl.textContent='sem impacto';
-    deltaEl.className='tc-delta';
-  }
-}
-
 // ====================================================================
 // COMPENSAÇÃO EXCLUSIVOS
 // Cálculos 100% preservados — apenas novos elementos visuais adicionados
@@ -3066,83 +2798,6 @@ function renderCompensacao(){
 // IDE = (Qtd_Extra / Qtd_Total_Sem_EXC) * 100
 // Onde Qtd_Extra = Fat_EXC / Ticket_Sem_EXC
 // ====================================================================
-function renderIDE(){
-  const sec=document.getElementById('sec-ide');
-  if(!RAW.length){sec.classList.remove('visible');return;}
-  sec.classList.add('visible');
-
-  // ── Base de dados ────────────────────────────────────────────
-  const excRows    =RAW.filter(r=>String(r[COL.FLAG]||'').trim()==='EXC');
-  const semExcRows =RAW.filter(r=>{const f=String(r[COL.FLAG]||'').trim();return f===''||f==='LINHA'||f==='LANÇ';});
-
-  const fatExc     =sumFat(excRows);
-  const fatTotal   =sumFat(RAW);
-  const tSemExc    =avgTicket(semExcRows);
-  const qtdSemExc  =sumQtd(semExcRows);
-
-  // ── Cálculos principais ──────────────────────────────────────
-  const qtdExtra   =tSemExc>0?fatExc/tSemExc:0;           // unidades adicionais
-  const ide        =qtdSemExc>0?qtdExtra/qtdSemExc*100:0; // % esforço (IDE)
-  const pctFatExc  =fatTotal>0?fatExc/fatTotal*100:0;      // participação EXC no fat.
-
-  // ── Classificação ────────────────────────────────────────────
-  let nivel,labelNivel,corClass;
-  if(ide<10)      {nivel='baixa';   labelNivel='Baixa dependência';   corClass='green';}
-  else if(ide<=25){nivel='moderada';labelNivel='Dependência moderada';corClass='yellow';}
-  else            {nivel='alta';    labelNivel='Alta dependência';     corClass='red';}
-
-  // ── Hero card: classe de cor ─────────────────────────────────
-  const hero=document.getElementById('ide-hero-card');
-  hero.className='ide-hero ide-'+nivel;
-
-  // IDE % grande
-  document.getElementById('ide-eyebrow').textContent='Índice de Dependência dos Exclusivos (IDE)';
-  document.getElementById('ide-pct-val').textContent=ide.toFixed(1).replace('.',',')+' %';
-
-  // Badge
-  document.getElementById('ide-badge-wrap').innerHTML=
-    `<span class="ide-badge ${nivel}"><span class="ide-badge-dot"></span>${labelNivel}</span>`;
-
-  // Barra de esforço — escala não-linear alinhada aos ticks: [0-10]=0-33%, [10-25]=33-67%, [25-50]=67-100%
-  function ideBarW(v){if(v<=0)return 0;if(v<=10)return (v/10)*33.3;if(v<=25)return 33.3+((v-10)/15)*33.4;if(v<=50)return 66.7+((v-25)/25)*33.3;return 100;}
-  document.getElementById('ide-bar-fill').style.width=ideBarW(ide).toFixed(1)+'%';
-
-  // ── Insight dinâmico ─────────────────────────────────────────
-  let insight='';
-  if(!fatExc){
-    insight='Não há produtos Exclusivos no portfólio. IDE = 0 — sem dependência.';
-  }else if(nivel==='baixa'){
-    insight=`Os produtos exclusivos representam ${fmtPct(pctFatExc)} do faturamento. `
-           +`Para substituí-los, seria necessário aumentar apenas ${ide.toFixed(1).replace('.',',')} % do volume faturado —`
-           +`uma dependência baixa que indica portfólio sólido e resiliente.`;
-  }else if(nivel==='moderada'){
-    insight=`Os produtos exclusivos representam ${fmtPct(pctFatExc)} do faturamento. `
-           +`Para substituí-los, seria necessário aumentar ${ide.toFixed(1).replace('.',',')} % do volume faturado —`
-           +`dependência moderada: a transição é factível, mas exige planejamento comercial.`;
-  }else{
-    insight=`Os produtos exclusivos representam ${fmtPct(pctFatExc)} do faturamento. `
-           +`Para substituí-los, seria necessário aumentar ${ide.toFixed(1).replace('.',',')} % do volume faturado —`
-           +`alta dependência: a retirada dos exclusivos representaria um risco significativo ao faturamento.`;
-  }
-  document.getElementById('ide-insight-text').textContent=insight;
-
-  // ── Cards de apoio ───────────────────────────────────────────
-  // Card fat: cor dinâmica por nível
-  const cardFat=document.getElementById('ide-card-fat');
-  cardFat.className='ide-support-card '+corClass;
-  document.getElementById('ide-fat-pct').textContent=fatExc?fmtPct(pctFatExc)+' do faturamento total':'—';
-  document.getElementById('ide-fat-abs').textContent=fatExc?fmtBRL(fatExc)+' em exclusivos':'sem produtos EXC';
-
-  const cardQtd=document.getElementById('ide-card-qtd');
-  cardQtd.className='ide-support-card '+corClass;
-  document.getElementById('ide-qtd-extra').textContent=qtdExtra?'+'+fmtInt(Math.ceil(qtdExtra))+' unidades':'—';
-  document.getElementById('ide-qtd-base').textContent=
-    tSemExc?'calculado com ticket base de '+fmtBRL(tSemExc):'—';
-
-  document.getElementById('ide-vol-atual').textContent=qtdSemExc?fmtInt(qtdSemExc)+' un.':'—';
-  document.getElementById('ide-ticket-base').textContent=tSemExc?fmtBRL(tSemExc):'—';
-}
-
 // ====================================================================
 // COMPUTE METRICS
 // ====================================================================
@@ -3174,15 +2829,12 @@ function computeMetrics(){
 // ====================================================================
 function renderAll(){
   const metrics=computeMetrics();
-  // Seções analíticas primeiro (adicionam .visible e definem layout)
-  try{ renderTicketCompare(); }catch(e){ console.warn('[renderTicketCompare]',e); }
-  try{ renderCompensacao();   }catch(e){ console.warn('[renderCompensacao]',e);   }
-  try{ renderIDE();           }catch(e){ console.warn('[renderIDE]',e);           }
+  // Seção analítica primeiro (adiciona .visible e define layout)
+  try{ renderCompensacao(); }catch(e){ console.warn('[renderCompensacao]',e); }
   // Dados principais depois — canvas já tem dimensões corretas
   renderKPIs(metrics);
   renderSummary();
   renderCharts(metrics);
-  renderInsights(metrics);
   renderTable();
   try{ renderResumoExec(); }catch(e){ console.warn('[renderResumoExec]',e); }
 }
@@ -3191,7 +2843,7 @@ function renderAll(){
 // KPIs
 // ====================================================================
 function renderKPIs(metrics){
-  const{totalFatRaw,totalQtdRaw,fat,qtd,sortedByFat,topProd,count80,classARows,classAFat,ticketMedio}=metrics;
+  const{totalFatRaw,totalQtdRaw,fat,qtd,count80,ticketMedio}=metrics;
   const isFiltered=filtered.length!==RAW.length;
   const flagVal=activeFlags.size===1?[...activeFlags][0]:'';
 
@@ -3204,22 +2856,8 @@ function renderKPIs(metrics){
   document.getElementById('kpi-ticket').textContent=fmtBRL(ticketMedio);
   document.getElementById('kpi-ticket-sub').textContent='Média por produto';
 
-  document.getElementById('kpi-prod').textContent=fmtInt(filtered.length);
-  document.getElementById('kpi-prod-sub').textContent=isFiltered?fmtPct(filtered.length/RAW.length*100)+' do portfólio':'Total de '+fmtInt(RAW.length)+' produtos';
-
-  document.getElementById('kpi-conc-a').textContent=fat>0?fmtPct(classAFat/fat*100):'—';
-  document.getElementById('kpi-prod-a').textContent=fmtInt(classARows.length);
-  document.getElementById('kpi-prod-a-sub').textContent='de '+fmtInt(filtered.length)+' total';
-
-  if(topProd){
-    document.getElementById('kpi-top-prod').textContent=truncate(topProd[COL.DESC]||'—',45);
-    document.getElementById('kpi-top-prod-sub').textContent=fmtBRL(num(topProd,COL.FAT));
-  }else{
-    document.getElementById('kpi-top-prod').textContent='—';
-    document.getElementById('kpi-top-prod-sub').textContent='—';
-  }
-
   document.getElementById('kpi-pareto').textContent=count80+' produto'+(count80!==1?'s':'');
+  document.getElementById('kpi-pareto-sub').textContent='de '+fmtInt(filtered.length)+' geram 80% do faturamento';
 }
 
 // ====================================================================
@@ -3309,21 +2947,8 @@ function renderSummaryTable(bodyId,classCol,data){
 function destroyChart(id){if(charts[id]){try{charts[id].destroy();}catch(e){}delete charts[id];}}
 
 function renderCharts(metrics){
-  renderDonutVal();renderComparativo();
-  renderPareto(metrics.sortedByFat,metrics.fat);
-  renderCruzada();renderTop15(metrics.sortedByFat);renderEstrategia();
-}
-
-function renderDonutVal(){
-  destroyChart('donutVal');
-  const grp={A:0,B:0,C:0};
-  filtered.forEach(r=>{const cls=String(r[COL.ABC_VAL]||'').trim().toUpperCase();if(grp[cls]!==undefined)grp[cls]+=num(r,COL.FAT);});
-  const total=grp.A+grp.B+grp.C;
-  charts['donutVal']=new Chart(document.getElementById('chartDonutVal'),{
-    type:'doughnut',
-    data:{labels:['Classe A','Classe B','Classe C'],datasets:[{data:[grp.A,grp.B,grp.C],backgroundColor:COLORS_ABC_ARR,borderWidth:2}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10}},tooltip:{callbacks:{label:ctx2=>{const v=ctx2.parsed;return' '+ctx2.label+': '+fmtBRL(v)+' ('+( total>0?fmtPct(v/total*100):'0%')+')';}}}}}
-  });
+  renderComparativo();
+  renderTop15(metrics.sortedByFat);
 }
 
 function renderComparativo(){
@@ -3352,43 +2977,6 @@ function renderComparativo(){
   });
 }
 
-function renderPareto(sortedByFat,fat){
-  destroyChart('pareto');
-  const sorted=sortedByFat.slice(0,30);
-  const total=fat;
-  let cum=0;
-  const labels=sorted.map(r=>truncate(r[COL.DESC]||r[COL.COD]||'',15));
-  const fats=sorted.map(r=>num(r,COL.FAT));
-  const cumPcts=sorted.map(r=>{cum+=num(r,COL.FAT);return total>0?parseFloat((cum/total*100).toFixed(2)):0;});
-  charts['pareto']=new Chart(document.getElementById('chartPareto'),{
-    data:{labels,datasets:[
-      {type:'bar',label:'Faturamento',data:fats,backgroundColor:'rgba(29,78,216,.75)',yAxisID:'y',order:2},
-      {type:'line',label:'% Acumulado',data:cumPcts,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.1)',pointRadius:2,pointHoverRadius:5,borderWidth:2,yAxisID:'y2',order:1,tension:0.3,fill:false}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},plugins:{legend:{labels:{font:{size:11}}},tooltip:{callbacks:{label:ctx2=>{if(ctx2.datasetIndex===0)return' Fat.: '+fmtBRL(ctx2.parsed.y);return' Acum.: '+ctx2.parsed.y.toFixed(1)+'%';}}}},scales:{x:{ticks:{font:{size:9},maxRotation:45}},y:{type:'linear',position:'left',ticks:{font:{size:9},callback:fmtAxisBRL},grid:{color:'#f1f5f9'}},y2:{type:'linear',position:'right',min:0,max:100,ticks:{font:{size:9},callback:v=>v+'%'},grid:{drawOnChartArea:false}}}}
-  });
-}
-
-function renderCruzada(){
-  destroyChart('cruzada');
-  const grp={};
-  filtered.forEach(r=>{
-    const cz=String(r[COL.CRUZADA]||'').trim().toUpperCase();
-    if(!cz)return;
-    if(!grp[cz])grp[cz]=0;
-    grp[cz]+=num(r,COL.FAT);
-  });
-  const sorted=Object.entries(grp).sort((a,b)=>b[1]-a[1]);
-  const labels=sorted.map(x=>x[0]);
-  const data=sorted.map(x=>x[1]);
-  const bgColors=labels.map(l=>CRUZADA_COLORS[l]||'#94a3b8');
-  charts['cruzada']=new Chart(document.getElementById('chartCruzada'),{
-    type:'bar',
-    data:{labels,datasets:[{label:'Faturamento',data,backgroundColor:bgColors,borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx2=>' '+fmtBRL(ctx2.parsed.x)}}},scales:{x:{ticks:{font:{size:9},callback:fmtAxisBRL},grid:{color:'#f1f5f9'}},y:{ticks:{font:{size:10,weight:'600'}}}}}
-  });
-}
-
 function renderTop15(sortedByFat){
   destroyChart('top15');
   const sorted=sortedByFat.slice(0,15);
@@ -3402,135 +2990,9 @@ function renderTop15(sortedByFat){
   });
 }
 
-function renderEstrategia(){
-  destroyChart('estrategia');
-  const grp={};
-  filtered.forEach(r=>{
-    const est=String(r[COL.ESTRATEGIA]||'').trim();
-    if(!est)return;
-    if(!grp[est])grp[est]=0;
-    grp[est]+=num(r,COL.FAT);
-  });
-  const sorted=Object.entries(grp).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const labels=sorted.map(x=>truncate(x[0],20));
-  const data=sorted.map(x=>x[1]);
-  const palette=['#1d4ed8','#7c3aed','#0d9488','#f59e0b','#ef4444','#16a34a','#0891b2','#ea580c'];
-  charts['estrategia']=new Chart(document.getElementById('chartEstrategia'),{
-    type:'bar',
-    data:{labels,datasets:[{label:'Faturamento',data,backgroundColor:palette,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx2=>' '+fmtBRL(ctx2.parsed.y)}}},scales:{x:{ticks:{font:{size:8},maxRotation:35}},y:{ticks:{font:{size:9},callback:fmtAxisBRL},grid:{color:'#f1f5f9'}}}}
-  });
-}
-
 // ====================================================================
 // INSIGHTS
 // ====================================================================
-function renderInsights(metrics){
-  const list=document.getElementById('insights-list');
-  list.innerHTML='';
-  const data=filtered;
-  const{fat:totalFat,sortedByFat,classARows,classAFat,ticketMedio,count80,topProd}=metrics;
-  const total=data.length;
-  const flagVal=activeFlags.size===1?[...activeFlags][0]:'';
-  const familiaVal=document.getElementById('f-familia').value;
-
-  if(!total){addInsight(list,'Nenhum produto encontrado com os filtros aplicados.');return;}
-
-  const periodo=document.getElementById('f-periodo').value.trim();
-  const periodoStr=periodo?` referente ao período <strong>${periodo}</strong>`:'';
-
-  // 0. Contexto de família
-  if(familiaVal){
-    const famNome=FAMILY_NAMES[familiaVal]||('Família '+familiaVal);
-    addInsight(list,`Visualizando <strong>${famNome}</strong>${periodoStr}: <strong>${fmtInt(total)}</strong> produto${total!==1?'s':''}, faturamento de <strong>${fmtBRL(totalFat)}</strong>.`);
-  }
-
-  // 1. Insights EXC com ênfase no ticket médio
-  if(flagVal==='EXC'){
-    const excRows=data.filter(r=>String(r[COL.FLAG]||'').trim()==='EXC');
-    if(excRows.length>0){
-      const ticketExc=avgTicket(excRows);
-      const ticketGeral=avgTicket(RAW);
-      const diff=ticketGeral>0?(ticketExc-ticketGeral)/ticketGeral*100:0;
-      const diffStr=(diff>=0?'▲ <strong>+':' ▼ <strong>')+Math.abs(diff).toFixed(1)+'%</strong>';
-      const excFat=sumFat(excRows);
-      const fatPct=sumFat(RAW)>0?excFat/sumFat(RAW)*100:0;
-
-      addInsight(list,
-        `🏷️ Os <strong>${fmtInt(excRows.length)}</strong> produtos <strong>EXC (Exclusivo)</strong> têm ticket médio de <strong>${fmtBRL(ticketExc)}</strong> — ${diffStr} em relação ao ticket médio geral (<strong>${fmtBRL(ticketGeral)}</strong>).`,
-        'insight-exc'
-      );
-      addInsight(list,
-        `🏷️ Produtos EXC representam <strong>${fmtPct(excRows.length/RAW.length*100)}</strong> do portfólio e respondem por <strong>${fmtPct(fatPct)}</strong> do faturamento total (<strong>${fmtBRL(excFat)}</strong>).`,
-        'insight-exc'
-      );
-
-      // Ticket por subclasse EXC
-      ['EXC_A','EXC_B','EXC_C'].forEach(czKey=>{
-        const czRows=excRows.filter(r=>String(r[COL.CRUZADA]||'').trim().toUpperCase()===czKey);
-        if(czRows.length>0){
-          const czTicketMedio=avgTicket(czRows);
-          addInsight(list,
-            `  └ <strong>${czKey}</strong>: ${fmtInt(czRows.length)} produto${czRows.length!==1?'s':''} · Ticket médio <strong>${fmtBRL(czTicketMedio)}</strong> · Fat. <strong>${fmtBRL(sumFat(czRows))}</strong>`,
-            'insight-exc'
-          );
-        }
-      });
-    }
-  }
-
-  // 2. Concentração classe A
-  if(classARows.length>0){
-    addInsight(list,
-      `Os <strong>${fmtInt(classARows.length)}</strong> produtos da classe A${periodoStr} representam <strong>${fmtPct(classARows.length/total*100)}</strong> do portfólio e concentram <strong>${totalFat>0?fmtPct(classAFat/totalFat*100):'—'}</strong> do faturamento.`
-    );
-  }
-
-  // 3. Maior produto
-  if(topProd){
-    addInsight(list,`O produto com maior faturamento é <strong>${truncate(topProd[COL.DESC]||topProd[COL.COD]||'—',40)}</strong> com <strong>${fmtBRL(num(topProd,COL.FAT))}</strong>.`);
-  }
-
-  // 4. AA Estrela
-  const aaProds=data.filter(r=>String(r[COL.CRUZADA]||'').trim().toUpperCase()==='AA');
-  if(aaProds.length>0){
-    addInsight(list,`<strong>${fmtInt(aaProds.length)}</strong> produto${aaProds.length!==1?'s':''} com classificação <strong>AA (Estrela)</strong> — alta performance em valor e volume.`);
-  }
-
-  // 5. CC Cauda Longa
-  const ccProds=data.filter(r=>String(r[COL.CRUZADA]||'').trim().toUpperCase()==='CC');
-  if(ccProds.length>0){
-    const ccFat=sumFat(ccProds);
-    addInsight(list,`<strong>${fmtInt(ccProds.length)}</strong> produto${ccProds.length!==1?'s':''} CC (Cauda Longa) representam apenas <strong>${totalFat>0?fmtPct(ccFat/totalFat*100):'—'}</strong> do faturamento — avaliar descontinuação.`);
-  }
-
-  // 6. Pareto 80%
-  addInsight(list,`Os <strong>${fmtInt(count80)}</strong> primeiros produto${count80!==1?'s':''} geram <strong>80%</strong> do faturamento (Princípio de Pareto).`);
-
-  // 7. CA Anomalia
-  const caProds=data.filter(r=>String(r[COL.CRUZADA]||'').trim().toUpperCase()==='CA');
-  if(caProds.length>0){addInsight(list,`⚠️ <strong>${fmtInt(caProds.length)}</strong> produto${caProds.length!==1?'s':''} CA (Anomalia) — alto volume mas baixo faturamento — revisar precificação.`);}
-
-  // 8. Ticket médio geral
-  if(ticketMedio>0){
-    const topTicket=[...data].sort((a,b)=>num(b,COL.TICKET)-num(a,COL.TICKET))[0];
-    addInsight(list,`Ticket médio do portfólio: <strong>${fmtBRL(ticketMedio)}</strong>. `+(topTicket?`Maior valor unitário: <strong>${truncate(topTicket[COL.DESC]||'',30)}</strong> (${fmtBRL(num(topTicket,COL.TICKET))}).`:''));
-  }
-
-  // 9. Estratégia mais comum
-  const estGrp={};
-  data.forEach(r=>{const est=String(r[COL.ESTRATEGIA]||'').trim();if(!est)return;estGrp[est]=(estGrp[est]||0)+1;});
-  const topEst=Object.entries(estGrp).sort((a,b)=>b[1]-a[1])[0];
-  if(topEst){addInsight(list,`Estratégia mais frequente: <strong>"${topEst[0]}"</strong> — aparece em <strong>${fmtInt(topEst[1])}</strong> produto${topEst[1]!==1?'s':''}.`);}
-
-  // 10. Lançamentos (se visível)
-  const lancRows=data.filter(r=>String(r[COL.FLAG]||'').trim()==='LANÇ');
-  if(lancRows.length>0&&flagVal!=='EXC'&&flagVal!=='LANÇ'){
-    const ticketLanc=avgTicket(lancRows);
-    addInsight(list,`🆕 <strong>${fmtInt(lancRows.length)}</strong> produto${lancRows.length!==1?'s':''} LANÇAMENTO com ticket médio de <strong>${fmtBRL(ticketLanc)}</strong> e faturamento de <strong>${fmtBRL(sumFat(lancRows))}</strong>.`);
-  }
-}
-
 function addInsight(list,html,extraClass=''){
   const li=document.createElement('li');
   if(extraClass)li.className=extraClass;
@@ -3605,14 +3067,10 @@ function renderTable(){
     const rank=start+idx+1;
     const fat=num(r,COL.FAT);
     const qtd=num(r,COL.QTD);
-    const qtdMes=num(r,COL.QTD_MES);
-    const fatMes=num(r,COL.FAT_MES);
     const ticket=num(r,COL.TICKET);
     const pctFat=num(r,COL.PCT_FAT);
     const pctDisplay=pctFat>1?pctFat:pctFat*100;
     const acum=r._pctAcum||0;
-    const cls=String(r[COL.ABC_VAL]||'').trim();
-    const clsQ=String(r[COL.ABC_QTD]||'').trim();
     const cz=String(r[COL.CRUZADA]||'').trim().toUpperCase();
     const flag=String(r[COL.FLAG]||'').trim();
     const est=String(r[COL.ESTRATEGIA]||'').trim();
@@ -3625,14 +3083,10 @@ function renderTable(){
       <td style="font-size:.73rem;color:var(--text-muted)">${familia}</td>
       <td title="${r[COL.DESC]||''}">${truncate(r[COL.DESC]||'',35)}</td>
       <td class="num">${fmtInt(qtd)}</td>
-      <td class="num">${fmtInt(qtdMes)}</td>
       <td class="num">${fmtBRL(fat)}</td>
-      <td class="num">${fmtBRL(fatMes)}</td>
       <td class="num" style="font-weight:600">${fmtBRL(ticket)}</td>
       <td class="num">${fmtPct(pctDisplay,2)}</td>
       <td class="num">${fmtPct(acum,2)}</td>
-      <td>${classBadge(cls)}</td>
-      <td>${classBadge(clsQ)}</td>
       <td>${cz?cruzadaBadge(cz):''}</td>
       <td class="flag-cell" onclick="toggleRowFlag(${r[COL.ITEM]})" title="Clique: EXC → LANÇ → Limpar">
         ${flag?flagBadge(flag):'<span class=\"flag-empty\">+ FLAG</span>'}
@@ -3976,7 +3430,7 @@ ${src.innerHTML}
 // ====================================================================
 // TAB SWITCHING
 // ====================================================================
-const ALL_ANALYSIS_SECTIONS=['sec-kpis','sec-ticket-compare','sec-compensacao','sec-ide','sec-summary','sec-charts','sec-insights','sec-table','sec-evolucao'];
+const ALL_ANALYSIS_SECTIONS=['sec-kpis','sec-compensacao','sec-summary','sec-charts','sec-table','sec-evolucao'];
 function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   const isResumo=tab==='resumo';

@@ -4,7 +4,7 @@
    - assets do próprio site (ícones/manifest): cache-first
    - Google Fonts: cache oportunista (stale-while-revalidate)
 */
-const VERSION = 'curva-abc-v4';
+const VERSION = 'curva-abc-v5';
 const APP_SHELL = [
   '/',
   '/index.html',
