@@ -235,6 +235,38 @@ header{background:var(--card);color:var(--text);padding:0 1.5rem;display:flex;al
 .mov-card.out .mov-card-val{color:#fb923c;}
 .mov-card.stable .mov-card-val{color:var(--text-muted);}
 .mov-card.swing .mov-card-val{color:#facc15;}
+/* Leitura rápida das cores — barra divergente por impacto em R$ */
+/* Coluna da cor com a MESMA largura no bloco de impacto e nas duas tabelas,
+   para o olho descer em linha reta. Números com dígito de largura fixa. */
+#sec-cores .cor-col{width:290px;min-width:290px;}
+#sec-cores .num{text-align:right;font-variant-numeric:tabular-nums;}
+#sec-cores .mov-card-val,#sec-cores .mov-card-lbl{overflow-wrap:anywhere;min-width:0;}
+#sec-cores .mov-card{min-width:0;}
+/* padding-left compensa a borda de 1px, para a coluna da cor cair no mesmo
+   x das tabelas abaixo (que usam .7rem de padding na célula) */
+.cor-fast{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.9rem .7rem;padding-left:calc(.7rem - 1px);margin-top:.4rem;}
+.cor-fast-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.7rem;}
+.cor-fast-row{display:grid;grid-template-columns:290px 1fr 96px 66px;align-items:center;gap:.7rem;padding:.2rem 0;font-size:.84rem;}
+.cor-fast-nome{display:flex;align-items:center;min-width:0;font-weight:600;}
+.cor-fast-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cor-fast-cod{margin-left:.4rem;font-family:monospace;font-size:.68rem;color:var(--text-muted);flex-shrink:0;}
+.cor-fast-bar{display:flex;align-items:center;height:16px;}
+.cor-fast-neg{flex:1;display:flex;justify-content:flex-end;}
+.cor-fast-pos{flex:1;}
+.cor-fast-zero{width:1px;height:16px;background:var(--border);flex-shrink:0;}
+.cor-fast-neg i,.cor-fast-pos i{display:block;height:16px;border-radius:3px;}
+.cor-fast-neg i{background:#f87171;border-radius:3px 0 0 3px;}
+.cor-fast-pos i{background:#4ade80;border-radius:0 3px 3px 0;}
+.cor-fast-val{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+.cor-fast-pct{text-align:right;color:var(--text-muted);font-size:.78rem;font-variant-numeric:tabular-nums;}
+.cor-fast-mais{margin-top:.6rem;font-size:.75rem;color:var(--text-muted);}
+/* main é flex column: sem min-width:0 a seção não encolhe e a tabela larga
+   empurra a página inteira em vez de rolar dentro do próprio scroller. */
+#sec-cores{min-width:0;}
+#sec-cores .table-scroll{max-width:100%;}
+@media(max-width:980px){.cor-fast-row{grid-template-columns:minmax(150px,200px) 1fr 88px;}#sec-cores .cor-col{width:auto;min-width:130px;}.cor-fast-pct{display:none;}
+  .cor-fast-txt{white-space:normal;overflow:visible;}}
+@media(max-width:620px){.cor-fast-row{grid-template-columns:minmax(120px,1fr) 1fr 78px;}.cor-fast-pct{display:none;}}
 .mov-table{width:100%;border-collapse:collapse;font-size:.79rem;}
 .mov-table thead th{background:var(--surface2,#222226);color:var(--text-muted);padding:.5rem .65rem;text-align:left;font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;position:sticky;top:0;z-index:1;border-bottom:1px solid var(--border);}
 .mov-table tbody tr:nth-child(even){background:rgba(255,255,255,.02);}
@@ -4007,6 +4039,32 @@ function _colorLabel(desc,prefix){
 // ("BRANCO ACETINAD") e mistura cor com medida.
 // ====================================================================
 const COR_LIMITE=5; // ± % a partir do qual a cor deixa de ser "estável"
+// Vocabulário de cor. Serve para jogar fora o que vem antes da cor na
+// descrição — "...EVORA C/BANQ OF" não é a cor "C/BANQ OF".
+const COR_VOCAB=/^(BRANCO|PRETO|OFF?|WHITE|CINAMOMO|CUMARU|ALECRIM|GRAFITE|GRAFIT\w*|WHISKY|ROSA|AZUL|CINZA|NATURE|NATURAL|ACETINAD\w*|REAL|VERDE|AMARELO|BEGE|CAFE|TABACO|TERRACOTA|FREIJO|CARVALHO|NOGUEIRA|IPE|MEL|AMENDOA|NUDE|CONCRETO|MARROM|CARAMELO|AVELA)$/;
+// Segundo caminho: varre a descrição de trás para frente enquanto as palavras
+// forem de cor. Cobre o modelo de cor única, onde não há prefixo comum para
+// subtrair. Fica como fallback porque erra quando o nome do modelo termina em
+// palavra de cor ("PAINEL REAL BRANCO" viraria "REAL BRANCO").
+function _corDaDescricao(desc){
+  const w=String(desc||'').trim().toUpperCase().split(/\s+/).filter(Boolean);
+  let i=w.length;
+  while(i>0&&w[i-1].split('/').some(t=>t&&COR_VOCAB.test(t)))i--;
+  const t=w.slice(i).join(' ').replace(/[.,;\/]+$/,'');
+  return t.length>=3?t:null;
+}
+function _corLimpa(rot,desc){
+  if(!rot)return null;
+  const R=String(rot).trim().toUpperCase().replace(/[.,;\/]+$/,'').replace(/\s+/g,' ');
+  if(!R)return null;
+  if(desc&&R===String(desc).trim().toUpperCase())return null; // modelo de cor única
+  const w=R.split(' ').filter(Boolean);
+  let i=0;
+  while(i<w.length&&!w[i].split('/').some(t=>t&&COR_VOCAB.test(t)))i++;
+  if(i>=w.length)return R;          // nenhuma palavra conhecida: mantém como veio
+  const limpo=w.slice(i).join(' ');
+  return limpo.length>=3?limpo:null; // sobra curta demais não identifica cor nenhuma
+}
 
 function buildCores(periodos){
   periodos=periodos||PERIODOS;
@@ -4030,14 +4088,24 @@ function buildCores(periodos){
       it.porMes[p.label]=(it.porMes[p.label]||0)+num(r,COL.FAT);
       it.porMesQ[p.label]=(it.porMesQ[p.label]||0)+num(r,COL.QTD);
       // Vota no nome da cor. Modelo de cor única devolve a descrição inteira,
-      // que não é nome de cor — esse voto é descartado.
-      const rot=_colorLabel(it.desc,prefixos.get(mod)||'').trim().toUpperCase();
-      if(rot&&rot!==it.desc.trim().toUpperCase()) c.nomes.set(rot,(c.nomes.get(rot)||0)+1);
+      // que não é nome de cor — esse voto é descartado em _corLimpa.
+      const rot=_corLimpa(_colorLabel(it.desc,prefixos.get(mod)||''),it.desc)||_corDaDescricao(it.desc);
+      if(rot) c.nomes.set(rot,(c.nomes.get(rot)||0)+1);
     }
   }
+  // A planilha corta descrições, então o mesmo sufixo aparece como
+  // "PRETO ACETINADO/CINAMOMO" e "PRETO ACETINADO/CI". O rótulo truncado é
+  // prefixo do completo — vence quem absorve os outros.
   for(const c of cores.values()){
-    const cand=[...c.nomes.entries()].sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length);
-    c.nome=cand.length?cand[0][0]:('Cor '+c.suf);
+    const ent=[...c.nomes.entries()];
+    let melhor=null,best=-1;
+    for(const [a,na] of ent){
+      let sc=na;
+      for(const [b,nb] of ent) if(b!==a&&a.startsWith(b)) sc+=nb;
+      if(sc>best||(sc===best&&a.length>(melhor||'').length)){melhor=a;best=sc;}
+    }
+    c.nome=melhor||('Cor '+c.suf);
+    c.semNome=!melhor;
   }
   return {meses,cores,fora:fora.size};
 }
@@ -4103,19 +4171,23 @@ function renderCoresTab(){
   for(const c of cores.values()){
     let itens=[...c.itens.values()];
     if(famFiltro) itens=itens.filter(i=>i.fam===famFiltro);
+    // Produtos presentes nos dois períodos — a "mesma base". Calculada sempre,
+    // esteja o filtro ligado ou não, para as duas leituras ficarem lado a lado.
+    const mesmaBase=itens.filter(i=>(i.porMes[mesDe]||0)>0&&(i.porMes[mesAte]||0)>0);
     if(baseFixa){
-      const antes=itens.length;
-      itens=itens.filter(i=>(i.porMes[mesDe]||0)>0&&(i.porMes[mesAte]||0)>0);
-      itensForaDaBase+=antes-itens.length;
+      itensForaDaBase+=itens.length-mesmaBase.length;
+      itens=mesmaBase;
     }
     if(!itens.length)continue;
     const fatDe=soma(itens,mesDe,'f'), fatAte=soma(itens,mesAte,'f');
     if(!fatDe&&!fatAte)continue;
+    const bDe=soma(mesmaBase,mesDe,'f'), bAte=soma(mesmaBase,mesAte,'f');
     linhas.push({
       suf:c.suf, nome:c.nome, fatDe, fatAte,
       qtdDe:soma(itens,mesDe,'q'), qtdAte:soma(itens,mesAte,'q'),
       skusDe:itens.filter(i=>(i.porMes[mesDe]||0)>0).length,
       skusAte:itens.filter(i=>(i.porMes[mesAte]||0)>0).length,
+      deltaBase:bDe>0?(bAte-bDe)/bDe*100:null, skusBase:mesmaBase.length,
       porMes:meses.reduce((o,m)=>{o[m]=soma(itens,m,'f');return o;},{}),
       porMesQ:meses.reduce((o,m)=>{o[m]=soma(itens,m,'q');return o;},{}),
     });
@@ -4142,11 +4214,21 @@ function renderCoresTab(){
   }
 
   // Cards
-  const comDelta=linhas.filter(l=>l.delta!==null&&l.fatDe>0);
-  const maiorAlta=comDelta.slice().sort((a,b)=>b.delta-a.delta)[0];
-  const maiorQueda=comDelta.slice().sort((a,b)=>a.delta-b.delta)[0];
+  // Ranking por IMPACTO em R$, não por %. Uma cor de R$ 18 mil que dobra
+  // aparece como +140% e não muda nada no resultado; o olho tem que ir para
+  // quem move dinheiro.
+  for(const l of linhas) l.impacto=l.fatAte-l.fatDe;
+  const porImpacto=linhas.slice().sort((a,b)=>b.impacto-a.impacto);
+  const maiorAlta=porImpacto[0]&&porImpacto[0].impacto>0?porImpacto[0]:null;
+  const maiorQueda=porImpacto[porImpacto.length-1]&&porImpacto[porImpacto.length-1].impacto<0?porImpacto[porImpacto.length-1]:null;
   const lider=linhas[0];
-  const pctS=v=>(v>=0?'+':'')+v.toFixed(1).replace('.',',')+'%';
+  const pctS=v=>v===null?'—':(v>=0?'+':'')+v.toFixed(1).replace('.',',')+'%';
+  const brlCurto=v=>{
+    const a=Math.abs(v), sg=v<0?'−':'+';
+    if(a>=1e6)return sg+'R$ '+(a/1e6).toFixed(1).replace('.',',')+' mi';
+    if(a>=1e3)return sg+'R$ '+Math.round(a/1e3).toLocaleString('pt-BR')+' mil';
+    return sg+'R$ '+Math.round(a).toLocaleString('pt-BR');
+  };
   if(cardsEl){
     const card=(cls,val,lbl,sub)=>`<div class="mov-card ${cls}" style="cursor:default;">
       <div class="mov-card-val" style="font-size:1.15rem;">${val}</div>
@@ -4155,9 +4237,9 @@ function renderCoresTab(){
     </div>`;
     cardsEl.innerHTML=
       card('','🌈 '+linhas.length,'Cores no recorte',`${mesDe} → ${mesAte}`)+
-      card('up',maiorAlta?`↑ ${maiorAlta.nome}`:'—','Maior alta',maiorAlta?pctS(maiorAlta.delta)+' · '+fmtBRL(maiorAlta.fatAte):'')+
-      card('down',maiorQueda?`↓ ${maiorQueda.nome}`:'—','Maior queda',maiorQueda?pctS(maiorQueda.delta)+' · '+(maiorQueda.fatAte?fmtBRL(maiorQueda.fatAte):'saiu do mix'):'')+
-      card('stable',lider.nome,'Líder de faturamento',fmtPct(lider.shareAte)+' do total em '+mesAte);
+      card('up',maiorAlta?`${_corSwatch(maiorAlta.nome)}${maiorAlta.nome}`:'—','Quem mais somou',maiorAlta?`<strong style="color:#4ade80;">${brlCurto(maiorAlta.impacto)}</strong> · ${pctS(maiorAlta.delta)}`:'')+
+      card('down',maiorQueda?`${_corSwatch(maiorQueda.nome)}${maiorQueda.nome}`:'—','Quem mais tirou',maiorQueda?`<strong style="color:#f87171;">${brlCurto(maiorQueda.impacto)}</strong> · ${pctS(maiorQueda.delta)}`:'')+
+      card('stable',`${_corSwatch(lider.nome)}${lider.nome}`,'Líder de faturamento',fmtPct(lider.shareAte)+' do total em '+mesAte);
   }
 
   const badge=st=>({
@@ -4174,23 +4256,27 @@ function renderCoresTab(){
   const tabela=`
   <div class="table-scroll" style="overflow-x:auto;">
   <table class="data-table" style="width:100%;">
+    <colgroup><col class="cor-col"><col style="width:58px;"><col style="width:82px;">
+      <col><col><col style="width:88px;">${baseFixa?'':'<col style="width:112px;">'}<col style="width:96px;"><col style="width:96px;">
+      <col style="width:92px;"><col style="width:82px;"><col style="width:104px;"></colgroup>
     <thead><tr>
-      <th>Cor</th><th style="text-align:center;">Cód.</th><th style="text-align:center;">SKUs</th>
-      <th style="text-align:right;">Fat. ${mesDe}</th><th style="text-align:right;">Fat. ${mesAte}</th><th style="text-align:right;">Δ FAT.</th>
-      <th style="text-align:right;">Share ${mesDe}</th><th style="text-align:right;">Share ${mesAte}</th><th style="text-align:right;">Δ SHARE</th>
-      <th style="text-align:right;">Δ UN.</th><th>Status</th>
+      <th>Cor</th><th class="num">Cód.</th><th class="num">SKUs</th>
+      <th class="num">Fat. ${mesDe}</th><th class="num">Fat. ${mesAte}</th><th class="num">Δ FAT.</th>${baseFixa?'':'<th class="num" title="Variação considerando apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.">Δ MESMA BASE</th>'}
+      <th class="num">Share ${mesDe}</th><th class="num">Share ${mesAte}</th><th class="num">Δ SHARE</th>
+      <th class="num">Δ UN.</th><th>Status</th>
     </tr></thead>
     <tbody>${linhas.map(l=>`<tr>
-      <td style="white-space:nowrap;font-weight:600;">${_corSwatch(l.nome)}${l.nome}</td>
-      <td style="text-align:center;font-family:monospace;font-size:.74rem;color:var(--text-muted);">${l.suf}</td>
-      <td style="text-align:center;">${l.skusAte}${l.skusAte!==l.skusDe?`<span style="color:var(--text-muted);font-size:.72rem;"> (era ${l.skusDe})</span>`:''}</td>
-      <td style="text-align:right;">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
-      <td style="text-align:right;font-weight:600;">${l.fatAte?fmtBRL(l.fatAte):'—'}</td>
-      <td style="text-align:right;">${dl(l.delta)}</td>
-      <td style="text-align:right;color:var(--text-muted);">${fmtPct(l.shareDe)}</td>
-      <td style="text-align:right;">${fmtPct(l.shareAte)}</td>
-      <td style="text-align:right;">${pp(l.deltaPP)}</td>
-      <td style="text-align:right;">${dl(l.deltaQtd)}</td>
+      <td style="font-weight:600;"><span style="display:flex;align-items:center;min-width:0;">${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
+      <td class="num" style="font-family:monospace;font-size:.74rem;color:var(--text-muted);">${l.suf}</td>
+      <td class="num">${l.skusAte}${l.skusAte!==l.skusDe?`<span style="color:var(--text-muted);font-size:.72rem;"> (era ${l.skusDe})</span>`:''}</td>
+      <td class="num">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
+      <td class="num" style="font-weight:600;">${l.fatAte?fmtBRL(l.fatAte):'—'}</td>
+      <td class="num">${dl(l.delta)}</td>
+      ${baseFixa?'':`<td class="num" title="${l.skusBase} produto(s) presentes nos dois períodos">${dl(l.deltaBase)}</td>`}
+      <td class="num" style="color:var(--text-muted);">${fmtPct(l.shareDe)}</td>
+      <td class="num">${fmtPct(l.shareAte)}</td>
+      <td class="num">${pp(l.deltaPP)}</td>
+      <td class="num">${dl(l.deltaQtd)}</td>
       <td>${badge(l.status)}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
@@ -4200,21 +4286,52 @@ function renderCoresTab(){
   <div class="section-title" style="margin-top:1.6rem;">Faturamento por cor, mês a mês</div>
   <div class="table-scroll" style="overflow-x:auto;">
   <table class="data-table" style="width:100%;">
-    <thead><tr><th>Cor</th>${meses.map(m=>`<th style="text-align:right;">${m}</th>`).join('')}</tr></thead>
+    <colgroup><col class="cor-col">${meses.map(()=>`<col style="width:${Math.floor(100/meses.length)}%;">`).join('')}</colgroup>
+    <thead><tr><th>Cor</th>${meses.map(m=>`<th class="num">${m}</th>`).join('')}</tr></thead>
     <tbody>${linhas.map(l=>`<tr>
-      <td style="white-space:nowrap;font-weight:600;">${_corSwatch(l.nome)}${l.nome}</td>
-      ${meses.map(m=>`<td style="text-align:right;">${l.porMes[m]?`${fmtBRL(l.porMes[m])}<span style="display:block;font-size:.68rem;color:var(--text-muted);font-weight:400;">${fmtInt(l.porMesQ[m]||0)} un.</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>`).join('')}
+      <td style="font-weight:600;"><span style="display:flex;align-items:center;min-width:0;">${_corSwatch(l.nome)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nome}</span></span></td>
+      ${meses.map(m=>`<td class="num">${l.porMes[m]?`${fmtBRL(l.porMes[m])}<span style="display:block;font-size:.68rem;color:var(--text-muted);font-weight:400;">${fmtInt(l.porMesQ[m]||0)} un.</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>`).join('')}
     </tr>`).join('')}</tbody>
   </table></div>`;
 
-  cont.innerHTML=tabela+mensal;
+  // Leitura rápida: barra divergente por impacto em R$, maior ganho no topo,
+  // maior perda embaixo. É o bloco que responde em 2 segundos.
+  const TOP=12;
+  const destaque=porImpacto.filter(l=>Math.abs(l.impacto)>0);
+  const mostra=destaque.length<=TOP?destaque:[...destaque.slice(0,Math.ceil(TOP/2)),...destaque.slice(-Math.floor(TOP/2))];
+  const ocultas=destaque.length-mostra.length;
+  const maxAbs=Math.max(1,...mostra.map(l=>Math.abs(l.impacto)));
+  const rapido=!mostra.length?'':`
+  <div class="cor-fast">
+    <div class="cor-fast-head">
+      <span>Impacto no faturamento — ${mesDe} → ${mesAte}</span>
+      <span style="color:var(--text-muted);font-weight:400;">barra = quanto a cor somou ou tirou em R$</span>
+    </div>
+    ${mostra.map(l=>{
+      const larg=Math.max(2,Math.abs(l.impacto)/maxAbs*100);
+      const pos=l.impacto>=0;
+      return `<div class="cor-fast-row">
+        <span class="cor-fast-nome" title="${l.nome} · código ${l.suf}">${_corSwatch(l.nome)}<span class="cor-fast-txt">${l.nome}</span><span class="cor-fast-cod">${l.suf}</span></span>
+        <span class="cor-fast-bar">
+          <span class="cor-fast-neg">${pos?'':`<i style="width:${larg}%"></i>`}</span>
+          <span class="cor-fast-zero"></span>
+          <span class="cor-fast-pos">${pos?`<i style="width:${larg}%"></i>`:''}</span>
+        </span>
+        <span class="cor-fast-val" style="color:${pos?'#4ade80':'#f87171'};">${brlCurto(l.impacto)}</span>
+        <span class="cor-fast-pct">${pctS(l.delta)}</span>
+      </div>`;
+    }).join('')}
+    ${ocultas>0?`<div class="cor-fast-mais">+ ${ocultas} cores com impacto menor — ver tabela abaixo</div>`:''}
+  </div>`;
+
+  cont.innerHTML=rapido+`<div class="section-title" style="margin-top:1.6rem;">Detalhamento por cor</div>`+tabela+mensal;
 
   if(notaEl){
     const partes=[];
     partes.push(`<strong>Como é calculado:</strong> a cor vem dos 3 últimos dígitos do código do produto (Família 3 + Modelo 3 + Cor 3), somando todos os produtos daquela cor no portfólio. Δ FAT. compara ${mesDe} com ${mesAte}; abaixo de ${COR_LIMITE}% de variação a cor é tratada como estável.`);
     partes.push(`<strong>Δ SHARE</strong> é a participação da cor no faturamento do recorte, em pontos percentuais. É a leitura mais honesta quando o mês inteiro subiu ou caiu: uma cor pode faturar mais e mesmo assim perder espaço no portfólio.`);
     if(baseFixa) partes.push(`<strong>Base constante ligada:</strong> ${fmtInt(itensForaDaBase)} produto(s) que não faturaram nos dois períodos ficaram de fora, para separar o efeito da cor do efeito de entrada e saída de produto.`);
-    else partes.push(`<strong>Atenção ao mix:</strong> sem a base constante, uma cor pode cair só porque um modelo saiu de linha. Ligue "Base constante" para comparar apenas produtos presentes nos dois períodos.`);
+    else partes.push(`<strong>Δ MESMA BASE</strong> repete a conta usando só os produtos que faturaram nos dois períodos. A diferença entre ela e o Δ FAT. é o efeito de entrada e saída de produto: se Δ FAT. sobe muito mais, o crescimento veio de SKU novo, não da cor. O filtro "Base constante" aplica esse recorte ao resto da tela também — share, unidades e mês a mês.`);
     if(fora) partes.push(`${fmtInt(fora)} produto(s) com código fora do padrão de 9 dígitos não entraram nesta análise.`);
     notaEl.innerHTML=partes.map(t=>`<p style="margin:.35rem 0;">${t}</p>`).join('');
   }
