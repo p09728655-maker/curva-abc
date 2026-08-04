@@ -1,17 +1,18 @@
-/* Service worker — Curva ABC (ritmoprod.)
+/* Service worker — Curva ABC (Patrimar)
    Estratégia:
    - navegações (o app): network-first com fallback para o cache (funciona offline)
    - assets do próprio site (ícones/manifest): cache-first
    - Google Fonts: cache oportunista (stale-while-revalidate)
 */
-const VERSION = 'curva-abc-v2';
+const VERSION = 'curva-abc-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon-maskable-512.png',
+  '/icon-192-maskable.png',
+  '/icon-512-maskable.png',
 ];
 
 self.addEventListener('install', (event) => {
