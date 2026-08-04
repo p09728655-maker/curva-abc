@@ -134,7 +134,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,s
 #gs-progress{display:none;flex-direction:column;align-items:center;gap:.5rem;}
 /* Carga automática: mostra só marca + spinner, sem o formulário de importação.
    Se a carga falhar, showImportError tira a classe e o formulário reaparece. */
-#import-screen .logo-img{border-radius:20px;box-shadow:0 8px 28px rgba(0,0,0,.45);margin-bottom:.2rem;}
+/* O logotipo tem fundo branco e o "móveis" em cinza-escuro: sobre o tema
+   escuro ele sumiria, então vai sempre sobre uma placa branca. */
+.logo-marca{display:block;height:28px;width:auto;background:#fff;border-radius:7px;padding:5px 10px;flex-shrink:0;}
+.logo-rodape{height:14px;width:auto;background:#fff;border-radius:3px;padding:3px 5px;vertical-align:-5px;margin-right:.45rem;}
+#import-screen .logo-img{width:min(320px,72vw);height:auto;background:#fff;border-radius:16px;padding:16px 22px;box-shadow:0 10px 34px rgba(0,0,0,.45);margin-bottom:.4rem;}
+@media(max-width:768px){.logo-marca{height:20px;padding:4px 7px;}}
 #import-screen.carregando p.sub,#import-screen.carregando .gs-card,
 #import-screen.carregando #drop-zone,#import-screen.carregando #btn-install,
 #import-screen.carregando #ios-install-hint{display:none!important;}
@@ -892,7 +897,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
 
 <!-- IMPORT SCREEN -->
 <div id="import-screen">
-  <img class="logo-img" src="icon-192.png" alt="Patrimar" width="96" height="96">
+  <img class="logo-img" src="logo-patrimar.png" alt="Patrimar Móveis">
   <h1>Dashboard Curva ABC</h1>
   <p class="sub">Cole o link da planilha do Google Sheets. Cada aba = um mês — o dashboard calcula a curva ABC automaticamente.</p>
   <div class="gs-card">
@@ -916,7 +921,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
 <!-- DASHBOARD -->
 <div id="dashboard">
   <header>
-    <span class="rp-brand" style="display:flex;align-items:center;gap:.45rem;font-size:1.05rem;font-weight:800;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;cursor:default;"><img src="icon-192.png" alt="Patrimar" width="26" height="26" style="border-radius:6px;display:block;flex-shrink:0;">Patrimar</span>
+    <span class="rp-brand" style="display:flex;align-items:center;flex-shrink:0;cursor:default;"><img class="logo-marca" src="logo-patrimar.png" alt="Patrimar Móveis"></span>
     <span style="color:var(--border);font-size:.9rem;flex-shrink:0;">|</span>
     <div class="header-left" style="flex:1;min-width:0;">
       <h2 style="font-size:.95rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📊 Curva ABC</h2>
@@ -1554,7 +1559,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
 
 </div><!-- end dashboard scroll area -->
 <button id="btn-scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Voltar ao topo">↑</button>
-  <footer><img src="icon-192.png" alt="" width="14" height="14" style="border-radius:3px;vertical-align:-2px;margin-right:.35rem;">Dashboard Curva ABC — Patrimar &mdash; Análise analítica avançada &mdash; <span id="footer-date"></span><span id="footer-periodo"></span> &mdash; Desenvolvido por <strong>Oderli Garcia</strong></footer>
+  <footer><img class="logo-rodape" src="logo-patrimar.png" alt="Patrimar Móveis">Dashboard Curva ABC — Patrimar &mdash; Análise analítica avançada &mdash; <span id="footer-date"></span><span id="footer-periodo"></span> &mdash; Desenvolvido por <strong>Oderli Garcia</strong></footer>
 </div>
 
 <script>
@@ -1987,9 +1992,9 @@ function renderEvolucao(){
 // ====================================================================
 // COLUNAS — mapeamento do xlsx atualizado
 // ====================================================================
-// Estrela Patrimar. Resolvida em URL absoluta para funcionar também nas
+// Logotipo Patrimar. Resolvido em URL absoluta para funcionar também nas
 // janelas de relatório, que são about:blank e não herdam a base da página.
-const LOGO_PATRIMAR=new URL('icon-192.png',location.href).href;
+const LOGO_PATRIMAR=new URL('logo-patrimar.png',location.href).href;
 const COL = {
   ITEM:       'ITEM',
   POS:        'POS MOD',
@@ -3894,7 +3899,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;b
 /* ── Print header ── */
 .print-title{font-size:13pt;font-weight:700;color:#1a237e;margin-bottom:1mm;}
 .print-brand{display:flex;align-items:center;gap:3mm;margin-bottom:1mm;}
-.print-brand img{width:11mm;height:11mm;border-radius:2mm;}
+.print-brand img{height:9mm;width:auto;}
 .print-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7a99;}
 .print-meta{font-size:7pt;color:#6b7a99;margin-bottom:4mm;border-bottom:1.5px solid #1a237e;padding-bottom:2mm;display:flex;justify-content:space-between;align-items:flex-end;}
 
@@ -3956,7 +3961,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;b
 .re-card-body,.re-full-body{padding:2.5mm 3mm;}
 </style>
 </head><body>
-<div class="print-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="print-title">${titulo}</div><div class="print-brand-nome">Patrimar · Curva ABC</div></div></div>
+<div class="print-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="print-title">${titulo}</div><div class="print-brand-nome">Curva ABC · Análise de Portfólio</div></div></div>
 <div class="print-meta">
   <span>Dashboard Curva ABC · Análise de Portfólio</span>
   <span>Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
@@ -4386,7 +4391,7 @@ function printCores(){
 body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .p-title{font-size:13pt;font-weight:700;color:#c2410c;}
 .p-brand{display:flex;align-items:center;gap:3mm;}
-.p-brand img{width:11mm;height:11mm;border-radius:2mm;}
+.p-brand img{height:9mm;width:auto;}
 .p-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7a99;margin-top:.6mm;}
 .p-meta{font-size:7.5pt;color:#6b7a99;margin:1mm 0 3mm;padding-bottom:2mm;border-bottom:1.5px solid #c2410c;display:flex;justify-content:space-between;gap:6mm;flex-wrap:wrap;}
 .p-sec{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7a99;margin:4mm 0 2mm;}
@@ -4435,7 +4440,7 @@ tr{page-break-inside:avoid;}
 #cor-nota,.p-nota{font-size:6.5pt;color:#6b7a99;line-height:1.5;margin-top:3mm;border-top:1px solid #e3e8f0;padding-top:2mm;}
 #cor-nota p{margin:.8mm 0;}
 </style></head><body>
-<div class="p-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="p-title">Movimento das Cores — portfólio consolidado</div><div class="p-brand-nome">Patrimar · Curva ABC</div></div></div>
+<div class="p-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="p-title">Movimento das Cores — portfólio consolidado</div><div class="p-brand-nome">Curva ABC</div></div></div>
 <div class="p-meta">
   <span><strong>${de} → ${ate}</strong> · ${fam} · Base constante: ${baseFixa?'ligada (só produtos nos 2 períodos)':'desligada'}</span>
   <span>gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
@@ -4835,7 +4840,7 @@ function printAssist(){
     +'ul{margin:4px 0 10px;padding-left:18px;}li{margin:2px 0;}'
     +'@media print{body{margin:10mm;}h2{page-break-after:avoid;}tr{page-break-inside:avoid;}}'
     +'</style></head><body>';
-  h+=`<h1 style="display:flex;align-items:center;gap:10px;"><img src="${LOGO_PATRIMAR}" alt="Patrimar" style="width:38px;height:38px;border-radius:7px;">Patrimar — Relatório de Assistências Técnicas</h1>`;
+  h+=`<h1 style="display:flex;align-items:center;gap:10px;"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis" style="height:34px;width:auto;">Relatório de Assistências Técnicas</h1>`;
   h+=`<div class="sub">Gerado em ${esc(now)}</div>`;
   h+=`<div class="kpis"><b>${fmtInt(totalAssist||rows.length)}</b> assistências &nbsp;·&nbsp; <b>${fmtInt(totalQtd)}</b> peças &nbsp;·&nbsp; <b>${fmtInt(arr.length)}</b> modelos</div>`;
   // Resumo executivo (texto)
@@ -6034,7 +6039,7 @@ body{padding-top:0;}
 <div class="page">
   <div class="head">
     <div>
-      <div class="brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar" style="width:11mm;height:11mm;border-radius:2mm;vertical-align:middle;margin-right:2.5mm;">Patrimar<small>Curva ABC · Estudo de Modelo</small></div>
+      <div class="brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis" style="height:9mm;width:auto;vertical-align:middle;margin-right:3mm;"><small style="display:block;margin-top:1mm;">Curva ABC · Estudo de Modelo</small></div>
     </div>
     <div class="doc-meta">Emitido em ${esc(dataStr)}${baseTxt?'<br>Base consolidada: '+esc(baseTxt):''}</div>
   </div>
