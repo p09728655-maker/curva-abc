@@ -132,6 +132,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,s
 #btn-gs-load:hover{opacity:.85;}
 #btn-gs-load:disabled{opacity:.45;cursor:not-allowed;}
 #gs-progress{display:none;flex-direction:column;align-items:center;gap:.5rem;}
+/* Carga automática: mostra só marca + spinner, sem o formulário de importação.
+   Se a carga falhar, showImportError tira a classe e o formulário reaparece. */
+#import-screen.carregando p.sub,#import-screen.carregando .gs-card,
+#import-screen.carregando #drop-zone,#import-screen.carregando #btn-install,
+#import-screen.carregando #ios-install-hint{display:none!important;}
+#import-screen.carregando #gs-progress{display:flex!important;margin-top:.4rem;}
 #gs-progress .gs-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 #gs-progress span{font-size:.82rem;color:var(--text-muted);}
 #drop-zone{display:none;}
@@ -1107,8 +1113,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
         <span class="filter-separator" style="margin:0 .3rem;">|</span>
         <span class="mov-label">Família:</span>
         <select id="cor-fam" onchange="renderCoresTab()" style="padding:.4rem .6rem;background:var(--surface2,#1e293b);color:var(--text,#e2e8f0);border:1px solid var(--border,#334155);border-radius:6px;font-family:inherit;font-size:.85rem;"><option value="">Todas</option></select>
-        <label style="font-size:.78rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:.35rem;margin-left:auto;" title="Considera apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.">
-          <input type="checkbox" id="cor-base-fixa" onchange="renderCoresTab()"> Base constante (só produtos nos 2 períodos)
+        <button onclick="printCores()" title="Gerar relatório desta tela (imprimir ou salvar em PDF)" style="margin-left:auto;display:inline-flex;align-items:center;gap:.35rem;background:var(--accent,#FF5C1F);color:#0a0a0b;border:none;border-radius:6px;padding:.45rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Relatório PDF</button>
+        <label style="font-size:.78rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:.35rem;" title="Considera apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.">
+          <input type="checkbox" id="cor-base-fixa" onchange="renderCoresTab()" checked> Base constante (só produtos nos 2 períodos)
         </label>
       </div>
       <div id="cor-cards" class="mov-cards" style="margin-top:1rem;"></div>
@@ -2341,7 +2348,12 @@ function recarregarSheets(){
   if(el&&!el.value.trim())el.value=localStorage.getItem('gs_last_url')||DEFAULT_SHEET_URL;
   iniciarCargaSheets();
 }
-function showImportError(msg){importError.textContent='❌ '+msg;importError.style.display='block';}
+function showImportError(msg){
+  // Falhou: devolve o formulário para o usuário poder corrigir o link
+  const tela=document.getElementById('import-screen');
+  if(tela)tela.classList.remove('carregando');
+  importError.textContent='❌ '+msg;importError.style.display='block';
+}
 
 function finalizarCargaSheets(){
   const now=new Date();
@@ -4174,6 +4186,7 @@ function renderCoresTab(){
     // Produtos presentes nos dois períodos — a "mesma base". Calculada sempre,
     // esteja o filtro ligado ou não, para as duas leituras ficarem lado a lado.
     const mesmaBase=itens.filter(i=>(i.porMes[mesDe]||0)>0&&(i.porMes[mesAte]||0)>0);
+    const todos=itens;
     if(baseFixa){
       itensForaDaBase+=itens.length-mesmaBase.length;
       itens=mesmaBase;
@@ -4181,13 +4194,17 @@ function renderCoresTab(){
     if(!itens.length)continue;
     const fatDe=soma(itens,mesDe,'f'), fatAte=soma(itens,mesAte,'f');
     if(!fatDe&&!fatAte)continue;
+    // As duas leituras são calculadas sempre; a coluna extra mostra a que não
+    // está no recorte, para não ser preciso ligar e desligar o filtro.
     const bDe=soma(mesmaBase,mesDe,'f'), bAte=soma(mesmaBase,mesAte,'f');
+    const tDe=soma(todos,mesDe,'f'), tAte=soma(todos,mesAte,'f');
     linhas.push({
       suf:c.suf, nome:c.nome, fatDe, fatAte,
       qtdDe:soma(itens,mesDe,'q'), qtdAte:soma(itens,mesAte,'q'),
       skusDe:itens.filter(i=>(i.porMes[mesDe]||0)>0).length,
       skusAte:itens.filter(i=>(i.porMes[mesAte]||0)>0).length,
-      deltaBase:bDe>0?(bAte-bDe)/bDe*100:null, skusBase:mesmaBase.length,
+      deltaOutro:baseFixa?(tDe>0?(tAte-tDe)/tDe*100:null):(bDe>0?(bAte-bDe)/bDe*100:null),
+      skusBase:mesmaBase.length, skusTodos:todos.length,
       porMes:meses.reduce((o,m)=>{o[m]=soma(itens,m,'f');return o;},{}),
       porMesQ:meses.reduce((o,m)=>{o[m]=soma(itens,m,'q');return o;},{}),
     });
@@ -4257,11 +4274,11 @@ function renderCoresTab(){
   <div class="table-scroll" style="overflow-x:auto;">
   <table class="data-table" style="width:100%;">
     <colgroup><col class="cor-col"><col style="width:58px;"><col style="width:82px;">
-      <col><col><col style="width:88px;">${baseFixa?'':'<col style="width:112px;">'}<col style="width:96px;"><col style="width:96px;">
+      <col><col><col style="width:88px;"><col style="width:112px;"><col style="width:96px;"><col style="width:96px;">
       <col style="width:92px;"><col style="width:82px;"><col style="width:104px;"></colgroup>
     <thead><tr>
       <th>Cor</th><th class="num">Cód.</th><th class="num">SKUs</th>
-      <th class="num">Fat. ${mesDe}</th><th class="num">Fat. ${mesAte}</th><th class="num">Δ FAT.</th>${baseFixa?'':'<th class="num" title="Variação considerando apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.">Δ MESMA BASE</th>'}
+      <th class="num">Fat. ${mesDe}</th><th class="num">Fat. ${mesAte}</th><th class="num">Δ FAT.</th><th class="num" title="${baseFixa?'Variação incluindo os produtos que entraram ou saíram do mix entre os dois períodos.':'Variação considerando apenas os produtos que faturaram nos dois períodos — isola o efeito da cor do efeito de entrada e saída de produto.'}">${baseFixa?'Δ C/ ENTRADAS':'Δ MESMA BASE'}</th>
       <th class="num">Share ${mesDe}</th><th class="num">Share ${mesAte}</th><th class="num">Δ SHARE</th>
       <th class="num">Δ UN.</th><th>Status</th>
     </tr></thead>
@@ -4272,7 +4289,7 @@ function renderCoresTab(){
       <td class="num">${l.fatDe?fmtBRL(l.fatDe):'—'}</td>
       <td class="num" style="font-weight:600;">${l.fatAte?fmtBRL(l.fatAte):'—'}</td>
       <td class="num">${dl(l.delta)}</td>
-      ${baseFixa?'':`<td class="num" title="${l.skusBase} produto(s) presentes nos dois períodos">${dl(l.deltaBase)}</td>`}
+      <td class="num" title="${baseFixa?`${l.skusTodos} produto(s) no total`:`${l.skusBase} produto(s) presentes nos dois períodos`}">${dl(l.deltaOutro)}</td>
       <td class="num" style="color:var(--text-muted);">${fmtPct(l.shareDe)}</td>
       <td class="num">${fmtPct(l.shareAte)}</td>
       <td class="num">${pp(l.deltaPP)}</td>
@@ -4330,11 +4347,96 @@ function renderCoresTab(){
     const partes=[];
     partes.push(`<strong>Como é calculado:</strong> a cor vem dos 3 últimos dígitos do código do produto (Família 3 + Modelo 3 + Cor 3), somando todos os produtos daquela cor no portfólio. Δ FAT. compara ${mesDe} com ${mesAte}; abaixo de ${COR_LIMITE}% de variação a cor é tratada como estável.`);
     partes.push(`<strong>Δ SHARE</strong> é a participação da cor no faturamento do recorte, em pontos percentuais. É a leitura mais honesta quando o mês inteiro subiu ou caiu: uma cor pode faturar mais e mesmo assim perder espaço no portfólio.`);
-    if(baseFixa) partes.push(`<strong>Base constante ligada:</strong> ${fmtInt(itensForaDaBase)} produto(s) que não faturaram nos dois períodos ficaram de fora, para separar o efeito da cor do efeito de entrada e saída de produto.`);
-    else partes.push(`<strong>Δ MESMA BASE</strong> repete a conta usando só os produtos que faturaram nos dois períodos. A diferença entre ela e o Δ FAT. é o efeito de entrada e saída de produto: se Δ FAT. sobe muito mais, o crescimento veio de SKU novo, não da cor. O filtro "Base constante" aplica esse recorte ao resto da tela também — share, unidades e mês a mês.`);
+    if(baseFixa) partes.push(`<strong>Base constante ligada (padrão):</strong> ${fmtInt(itensForaDaBase)} produto(s) que não faturaram nos dois períodos ficaram de fora, para separar o efeito da cor do efeito de entrada e saída de produto. Por isso os valores desta tela <em>não fecham</em> com o faturamento total do mês — a coluna Δ C/ ENTRADAS mostra a variação com tudo incluído, e desligar o filtro traz a tela inteira para essa base.`);
+    else partes.push(`<strong>Base constante desligada:</strong> os valores incluem produtos que entraram ou saíram do mix, então fecham com o faturamento do período. A coluna Δ MESMA BASE repete a conta só com os produtos presentes nos dois períodos — a diferença entre as duas é o efeito de entrada e saída de produto.`);
     if(fora) partes.push(`${fmtInt(fora)} produto(s) com código fora do padrão de 9 dígitos não entraram nesta análise.`);
     notaEl.innerHTML=partes.map(t=>`<p style="margin:.35rem 0;">${t}</p>`).join('');
   }
+}
+
+// ====================================================================
+// RELATÓRIO DA ABA CORES — A4 paisagem. Reaproveita o HTML já renderizado
+// na tela e troca só a folha de estilo, como o Resumo Executivo faz.
+// ====================================================================
+function printCores(){
+  const src=document.getElementById('cor-content');
+  if(!src||!src.innerHTML.trim()||!PERIODOS.length)return;
+  const de=document.getElementById('cor-de').value;
+  const ate=document.getElementById('cor-ate').value;
+  const famSel=document.getElementById('cor-fam');
+  const fam=famSel&&famSel.value?(famSel.options[famSel.selectedIndex].textContent):'Todas as famílias';
+  const baseFixa=document.getElementById('cor-base-fixa').checked;
+  const cards=document.getElementById('cor-cards');
+  const nota=document.getElementById('cor-nota');
+
+  const w=window.open('','_blank','width=1200,height=850');
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8"/>
+<title>Movimento das Cores — ${de} a ${ate}</title>
+<style>
+@page{size:A4 landscape;margin:10mm 12mm;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.p-title{font-size:13pt;font-weight:700;color:#c2410c;}
+.p-meta{font-size:7.5pt;color:#6b7a99;margin:1mm 0 3mm;padding-bottom:2mm;border-bottom:1.5px solid #c2410c;display:flex;justify-content:space-between;gap:6mm;flex-wrap:wrap;}
+.p-sec{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7a99;margin:4mm 0 2mm;}
+
+/* cards do topo */
+.mov-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-bottom:3mm;}
+.mov-card{border:1px solid #e3e8f0;border-left:3px solid #94a3b8;border-radius:3px;padding:2mm 2.5mm;background:#f8fafc;}
+.mov-card.up{border-left-color:#15803d;}.mov-card.down{border-left-color:#b91c1c;}
+.mov-card-val{font-size:9.5pt;font-weight:700;display:flex;align-items:center;gap:1.5mm;}
+.mov-card-lbl{font-size:6.5pt;text-transform:uppercase;letter-spacing:.06em;color:#6b7a99;margin-top:.6mm;}
+
+/* bloco de impacto */
+.cor-fast{border:1px solid #e3e8f0;border-radius:3px;padding:2mm 2.5mm;}
+.cor-fast-head{display:flex;justify-content:space-between;font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7a99;margin-bottom:1.5mm;}
+.cor-fast-row{display:grid;grid-template-columns:60mm 1fr 22mm 15mm;align-items:center;gap:2mm;padding:.35mm 0;font-size:7.5pt;}
+.cor-fast-nome{white-space:nowrap;}
+.cor-fast-nome{display:flex;align-items:center;font-weight:600;}
+.cor-fast-cod{margin-left:1.5mm;font-family:monospace;font-size:6pt;color:#6b7a99;}
+.cor-fast-bar{display:flex;align-items:center;height:2.6mm;}
+.cor-fast-neg{flex:1;display:flex;justify-content:flex-end;}.cor-fast-pos{flex:1;}
+.cor-fast-zero{width:.3mm;height:2.6mm;background:#cbd5e1;}
+.cor-fast-neg i,.cor-fast-pos i{display:block;height:2.6mm;}
+.cor-fast-neg i{background:#dc2626;}.cor-fast-pos i{background:#16a34a;}
+.cor-fast-val,.cor-fast-pct{text-align:right;font-variant-numeric:tabular-nums;}
+.cor-fast-val{font-weight:700;}.cor-fast-pct{color:#6b7a99;font-size:7pt;}
+.cor-fast-mais{margin-top:1.5mm;font-size:6.5pt;color:#6b7a99;}
+
+/* tabelas */
+.table-scroll{overflow:visible!important;}
+table{width:100%;border-collapse:collapse;font-size:7pt;page-break-inside:auto;}
+th{font-size:6.2pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7a99;
+   background:#f1f5f9;padding:1.2mm 1.5mm;text-align:left;border-bottom:1px solid #cbd5e1;}
+td{padding:1mm 1.5mm;border-bottom:1px solid #eef2f7;white-space:nowrap;}
+tr{page-break-inside:avoid;}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.section-title{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7a99;margin:4mm 0 1.5mm;}
+
+/* o HTML da tela vem com cores de tema escuro nos style inline */
+[style*="4ade80"]{color:#15803d!important;}
+[style*="f87171"]{color:#b91c1c!important;}
+[style*="text-muted"],[style*="--text-muted"]{color:#6b7a99!important;}
+.badge-up,.badge-down,.badge-new,.badge-out,.badge-stable{font-size:6pt;font-weight:700;padding:.4mm 1.2mm;border-radius:2px;}
+.badge-up{background:#dcfce7;color:#15803d;}.badge-down{background:#fee2e2;color:#b91c1c;}
+.badge-new{background:#dbeafe;color:#1d4ed8;}.badge-out{background:#ffedd5;color:#c2410c;}
+.badge-stable{background:#f1f5f9;color:#64748b;}
+#cor-nota,.p-nota{font-size:6.5pt;color:#6b7a99;line-height:1.5;margin-top:3mm;border-top:1px solid #e3e8f0;padding-top:2mm;}
+#cor-nota p{margin:.8mm 0;}
+</style></head><body>
+<div class="p-title">Movimento das Cores — portfólio consolidado</div>
+<div class="p-meta">
+  <span><strong>${de} → ${ate}</strong> · ${fam} · Base constante: ${baseFixa?'ligada (só produtos nos 2 períodos)':'desligada'}</span>
+  <span>Curva ABC · ritmoprod. · gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+</div>
+${cards?cards.outerHTML:''}
+${src.innerHTML}
+${nota?`<div class="p-nota">${nota.innerHTML}</div>`:''}
+</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{w.print();w.close();},400);
 }
 
 // ====================================================================
@@ -6074,7 +6176,11 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
   // Já tendo um endereço válido, carrega direto o dashboard e pula a tela de
   // importação. Se a carga falhar (offline/sem acesso), a própria
   // iniciarCargaSheets reexibe a tela de importação com a mensagem de erro.
-  if(u && extrairSheetId(u)) iniciarCargaSheets();
+  if(u && extrairSheetId(u)){
+    const tela=document.getElementById('import-screen');
+    if(tela)tela.classList.add('carregando');
+    iniciarCargaSheets();
+  }
 })();
 const _gsUrlEl=document.getElementById('gs-url');
 if(_gsUrlEl)_gsUrlEl.addEventListener('keydown',e=>{if(e.key==='Enter')iniciarCargaSheets();});
