@@ -3906,10 +3906,13 @@ function printResumoExec(){
 body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 
 /* ── Print header ── */
-.print-title{font-size:13pt;font-weight:700;color:#1a237e;margin-bottom:1mm;}
-.print-brand{display:flex;align-items:center;gap:3mm;margin-bottom:1mm;}
-.print-brand img{height:9mm;width:auto;}
-.print-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7a99;}
+/* faixa do PPCP: mesma dos demais painéis. Logo em chip branco — o
+   logotipo é vermelho sobre claro e sumiria direto no escuro. */
+.print-title{font-size:13pt;font-weight:700;color:#fff;margin:.8mm 0 .4mm;}
+.print-brand{display:flex;align-items:center;gap:3mm;padding:3mm 4mm;margin-bottom:2mm;background:linear-gradient(135deg,#1a1a2e,#16213e 60%,#0f3460);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.print-brand img{height:8mm;width:auto;background:#fff;padding:1mm 2mm;border-radius:1mm;}
+.print-brand-lb{font-size:6pt;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#f5a623;}
+.print-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a0aec0;}
 .print-meta{font-size:7pt;color:#6b7a99;margin-bottom:4mm;border-bottom:1.5px solid #1a237e;padding-bottom:2mm;display:flex;justify-content:space-between;align-items:flex-end;}
 
 /* ── KPI strip ── */
@@ -3970,7 +3973,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;b
 .re-card-body,.re-full-body{padding:2.5mm 3mm;}
 </style>
 </head><body>
-<div class="print-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="print-title">${titulo}</div><div class="print-brand-nome">Curva ABC · Análise de Portfólio</div></div></div>
+<div class="print-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="print-brand-lb">PPCP — Planejamento e Controle da Produção</div><div class="print-title">${titulo}</div><div class="print-brand-nome">Curva ABC · Análise de Portfólio</div></div></div>
 <div class="print-meta">
   <span>Dashboard Curva ABC · Análise de Portfólio</span>
   <span>Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
@@ -4471,10 +4474,12 @@ function printCores(){
 @page{size:A4 landscape;margin:10mm 12mm;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.p-title{font-size:13pt;font-weight:700;color:#c2410c;}
-.p-brand{display:flex;align-items:center;gap:3mm;}
-.p-brand img{height:9mm;width:auto;}
-.p-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7a99;margin-top:.6mm;}
+/* faixa do PPCP: mesma dos demais painéis */
+.p-title{font-size:13pt;font-weight:700;color:#fff;margin:.8mm 0 .4mm;}
+.p-brand{display:flex;align-items:center;gap:3mm;padding:3mm 4mm;margin-bottom:2mm;background:linear-gradient(135deg,#1a1a2e,#16213e 60%,#0f3460);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.p-brand img{height:8mm;width:auto;background:#fff;padding:1mm 2mm;border-radius:1mm;}
+.p-brand-lb{font-size:6pt;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#f5a623;}
+.p-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a0aec0;}
 .p-meta{font-size:7.5pt;color:#6b7a99;margin:1mm 0 3mm;padding-bottom:2mm;border-bottom:1.5px solid #c2410c;display:flex;justify-content:space-between;gap:6mm;flex-wrap:wrap;}
 .p-sec{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7a99;margin:4mm 0 2mm;}
 
@@ -4525,7 +4530,7 @@ tr{page-break-inside:avoid;}
 #cor-nota,.p-nota{font-size:6.5pt;color:#6b7a99;line-height:1.5;margin-top:3mm;border-top:1px solid #e3e8f0;padding-top:2mm;}
 #cor-nota p{margin:.8mm 0;}
 </style></head><body>
-<div class="p-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="p-title">Movimento das Cores — portfólio consolidado</div><div class="p-brand-nome">Curva ABC</div></div></div>
+<div class="p-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="p-brand-lb">PPCP — Planejamento e Controle da Produção</div><div class="p-title">Movimento das Cores — portfólio consolidado</div><div class="p-brand-nome">Curva ABC</div></div></div>
 <div class="p-meta">
   <span><strong>${de} → ${ate}</strong> · ${fam} · Base constante: ${baseFixa?'ligada (só produtos nos 2 períodos)':'desligada'}</span>
   <span>gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
@@ -4916,7 +4921,7 @@ function printAssist(){
   let h='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Assistências — Patrimar</title>';
   h+='<style>'
     +'*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;font-size:12px;}'
-    +'h1{font-size:18px;margin:0 0 2px;color:#FF5C1F;}h2{font-size:13px;margin:18px 0 6px;border-bottom:2px solid #FF5C1F;padding-bottom:3px;}'
+    +'h1{font-size:18px;margin:3px 0 2px;color:#fff;}h2{font-size:13px;margin:18px 0 6px;border-bottom:2px solid #FF5C1F;padding-bottom:3px;}'+'.hd{display:flex;align-items:center;gap:12px;padding:11px 14px;margin:-24px -24px 12px;background:linear-gradient(135deg,#1a1a2e,#16213e 60%,#0f3460);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'+'.hd img{height:30px;width:auto;background:#fff;padding:4px 8px;border-radius:4px;}'+'.hd .lb{font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f5a623;}'+'.hd .sb{font-size:9px;color:#a0aec0;text-transform:uppercase;letter-spacing:1px;}'
     +'.sub{color:#555;font-size:11px;margin-bottom:6px;}'
     +'.kpis{margin:8px 0 4px;font-size:12px;}.kpis b{font-size:14px;}'
     +'table{border-collapse:collapse;width:100%;margin-bottom:6px;}'
@@ -4925,8 +4930,10 @@ function printAssist(){
     +'ul{margin:4px 0 10px;padding-left:18px;}li{margin:2px 0;}'
     +'@media print{body{margin:10mm;}h2{page-break-after:avoid;}tr{page-break-inside:avoid;}}'
     +'</style></head><body>';
-  h+=`<h1 style="display:flex;align-items:center;gap:10px;"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis" style="height:34px;width:auto;">Relatório de Assistências Técnicas</h1>`;
-  h+=`<div class="sub">Gerado em ${esc(now)}</div>`;
+  h+=`<div class="hd"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis"><div>`
+    +`<div class="lb">PPCP — Planejamento e Controle da Produção</div>`
+    +`<h1>Relatório de Assistências Técnicas</h1>`
+    +`<div class="sb">Gerado em ${esc(now)}</div></div></div>`;
   h+=`<div class="kpis"><b>${fmtInt(totalAssist||rows.length)}</b> assistências &nbsp;·&nbsp; <b>${fmtInt(totalQtd)}</b> peças &nbsp;·&nbsp; <b>${fmtInt(arr.length)}</b> modelos</div>`;
   // Resumo executivo (texto)
   {
@@ -6077,10 +6084,13 @@ function printModelo(){
 *{box-sizing:border-box;}
 html,body{margin:0;background:#fff;color:var(--text);font-family:'Inter',-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.45;}
 .page{max-width:1000px;margin:0 auto;padding:24px 26px;}
-.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--accent);padding-bottom:10px;margin-bottom:14px;}
-.brand{font-weight:800;color:var(--accent);font-size:15px;letter-spacing:.3px;}
-.brand small{display:block;color:var(--text-muted);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
-.doc-meta{text-align:right;color:var(--text-muted);font-size:10.5px;}
+/* faixa do PPCP: mesma dos demais painéis */
+.head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;margin-bottom:14px;background:linear-gradient(135deg,#1a1a2e,#16213e 60%,#0f3460);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.brand{display:flex;align-items:center;gap:3mm;font-weight:800;color:#fff;font-size:15px;letter-spacing:.3px;}
+.brand .lb{display:block;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f5a623;}
+.brand img{background:#fff;padding:4px 8px;border-radius:4px;flex-shrink:0;}
+.brand small{display:block;color:#a0aec0;font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.doc-meta{text-align:right;color:#a0aec0;font-size:10.5px;}
 h1{font-size:20px;margin:2px 0 2px;color:var(--text);}
 .sub{color:var(--text-muted);font-size:11px;margin-bottom:2px;}
 .tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:10.5px;color:var(--text-muted);margin-right:5px;font-family:monospace;}
@@ -6124,7 +6134,7 @@ body{padding-top:0;}
 <div class="page">
   <div class="head">
     <div>
-      <div class="brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis" style="height:9mm;width:auto;vertical-align:middle;margin-right:3mm;"><small style="display:block;margin-top:1mm;">Curva ABC · Estudo de Modelo</small></div>
+      <div class="brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar Móveis" style="height:8mm;width:auto;"><div><span class="lb">PPCP — Planejamento e Controle da Produção</span><small>Curva ABC · Estudo de Modelo</small></div></div>
     </div>
     <div class="doc-meta">Emitido em ${esc(dataStr)}${baseTxt?'<br>Base consolidada: '+esc(baseTxt):''}</div>
   </div>
