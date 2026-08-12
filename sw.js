@@ -4,17 +4,26 @@
    - assets do próprio site (ícones/manifest): cache-first
    - Google Fonts: cache oportunista (stale-while-revalidate)
 */
-const VERSION = 'curva-abc-v4';
+const VERSION = 'curva-abc-v5';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/logo-patrimar.png',
+  '/favicon.ico',
+  '/favicon-32.png',
+  '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-192-maskable.png',
   '/icon-512-maskable.png',
 ];
+
+// O host reescreve rota desconhecida para /index.html, então um ícone que falta
+// volta como HTML com status 200. Guardar isso no cache "congela" o ícone
+// quebrado mesmo depois do arquivo certo subir — por isso a checagem de tipo.
+const isHtml = (res) =>
+  (res.headers.get('content-type') || '').toLowerCase().includes('text/html');
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -76,17 +85,20 @@ self.addEventListener('fetch', (event) => {
 
   // Assets do próprio site -> cache-first
   if (url.origin === self.location.origin) {
+    const isAsset = req.destination !== 'document';
     event.respondWith(
-      caches.match(req).then((cached) =>
-        cached ||
-        fetch(req).then((res) => {
-          if (res && res.status === 200 && res.type === 'basic') {
+      caches.match(req).then((cached) => {
+        if (cached && !(isAsset && isHtml(cached))) return cached;
+        return fetch(req).then((res) => {
+          const cacheable =
+            res && res.status === 200 && res.type === 'basic' && !(isAsset && isHtml(res));
+          if (cacheable) {
             const copy = res.clone();
             caches.open(VERSION).then((c) => c.put(req, copy));
           }
           return res;
-        })
-      )
+        }).catch(() => cached);
+      })
     );
   }
 });
