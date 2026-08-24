@@ -1424,12 +1424,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
           </table>
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
-          <h4>Distribuição por Cruzada (Valor × Quantidade)</h4>
-          <p style="color:var(--text-muted);font-size:.75rem;margin:.2rem 0 .6rem;">Clique numa linha (AA, AB…) para abrir a lista de produtos da classe, agrupada por família.</p>
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+            <h4 style="margin:0;">Distribuição por Cruzada (Valor × Quantidade)</h4>
+            <button onclick="printCruzada()" title="Gera o relatório com as classes abertas na tela (imprimir ou salvar em PDF)" style="margin-left:auto;display:inline-flex;align-items:center;gap:.35rem;background:var(--accent,#FF5C1F);color:#0a0a0b;border:none;border-radius:6px;padding:.45rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ Relatório PDF</button>
+          </div>
+          <p style="color:var(--text-muted);font-size:.75rem;margin:.2rem 0 .6rem;">Clique numa linha (AA, AB…) para abrir a lista de produtos da classe, agrupada por família. O relatório sai com as classes que estiverem abertas.</p>
           <table class="summary-table">
             <thead><tr><th>Cruzada</th><th>Produtos</th><th>% Prod.</th><th>Faturamento</th><th>% Fat.</th></tr></thead>
             <tbody id="summary-cruzada-body"></tbody>
           </table>
+          <p id="summary-cruzada-nota" style="font-size:.78rem;margin:.7rem 0 0;padding:.55rem .7rem;border-left:3px solid #1d4ed8;background:rgba(29,78,216,.08);border-radius:0 4px 4px 0;"></p>
         </div>
       </div>
     </section>
@@ -2789,6 +2793,7 @@ function resetAll(){
   document.getElementById('summary-val-body').innerHTML='';
   document.getElementById('summary-qtd-body').innerHTML='';
   const _cb=document.getElementById('summary-cruzada-body');if(_cb)_cb.innerHTML='';
+  const _cn=document.getElementById('summary-cruzada-nota');if(_cn)_cn.innerHTML='';
   document.getElementById('insights-list').innerHTML='';
   document.getElementById('flag-impact-banner').classList.remove('visible','mode-exc','mode-lanc','mode-linha');
   activeFlags.clear();
@@ -3292,18 +3297,35 @@ function renderCruzadaTable(data){
       <td class="num"><strong>${fmtBRL(totalFat)}</strong></td>
       <td class="num"><strong>100%</strong></td>
     </tr>`;
+  const nota=document.getElementById('summary-cruzada-nota');
+  if(nota)nota.innerHTML=czNota80(data,keys,groups,totalFat);
+}
+
+// O corte de 80% do faturamento é a classe A por VALOR — que se espalha por
+// várias cruzadas (AA, AB, AC, EXC_A, LANÇ_A). Sem isso é fácil ler a AA
+// sozinha como se fosse a curva A inteira.
+function czNota80(data,keys,groups,totalFat){
+  const daCurvaA=keys.filter(cz=>groups[cz].rows.some(r=>String(r[COL.ABC_VAL]||'').trim().toUpperCase()==='A'));
+  const rowsA=data.filter(r=>String(r[COL.ABC_VAL]||'').trim().toUpperCase()==='A');
+  if(!rowsA.length)return'';
+  const fatA=sumFat(rowsA);
+  return `<strong>Onde estão os 80% do faturamento:</strong> na classe <strong>A por valor</strong>, que se espalha por ${daCurvaA.length} cruzada${daCurvaA.length!==1?'s':''} — <strong>${daCurvaA.join(' + ')}</strong> = <strong>${fmtInt(rowsA.length)} produtos</strong> e <strong>${totalFat>0?fmtPct(fatA/totalFat*100):'—'}</strong> do faturamento. A cruzada AA sozinha é só a parte que também é A em quantidade.`;
 }
 
 // Produtos de uma cruzada agrupados por família — responde "quais famílias
 // compõem a curva AA/AB?" sem precisar exportar a tabela completa.
-function czFamiliasHTML(cz,g){
+function czAgrupaFamilias(rows){
   const fams={};
-  g.rows.forEach(r=>{
+  rows.forEach(r=>{
     const f=getFamilia(r)||'—';
     (fams[f]=fams[f]||{rows:[],fat:0,qtd:0});
     fams[f].rows.push(r); fams[f].fat+=num(r,COL.FAT); fams[f].qtd+=num(r,COL.QTD);
   });
-  const ord=Object.entries(fams).sort((a,b)=>b[1].fat-a[1].fat);
+  return Object.entries(fams).sort((a,b)=>b[1].fat-a[1].fat);
+}
+
+function czFamiliasHTML(cz,g){
+  const ord=czAgrupaFamilias(g.rows);
   const linhas=ord.map(([f,fg])=>{
     const nome=FAMILY_NAMES[f]||('Família '+f);
     return `<tr class="cz-fam-row">
@@ -3333,6 +3355,112 @@ function toggleCzProdutos(tr){
   const abrir=det.style.display==='none';
   det.style.display=abrir?'':'none';
   tr.classList.toggle('aberta',abrir);
+}
+
+// Relatório da Cruzada — resumo por classe + detalhe das classes abertas na
+// tela. Mesma faixa PPCP dos outros relatórios do painel.
+function printCruzada(){
+  if(!filtered.length){alert('Carregue os dados antes de gerar o relatório.');return;}
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const totalProd=filtered.length, totalFat=sumFat(filtered);
+  const groups={};
+  filtered.forEach(r=>{
+    const cz=String(r[COL.CRUZADA]||'').trim().toUpperCase();
+    if(!cz)return;
+    (groups[cz]=groups[cz]||{prods:0,fat:0,rows:[]});
+    groups[cz].prods++; groups[cz].fat+=num(r,COL.FAT); groups[cz].rows.push(r);
+  });
+  const keys=[...CRUZADA_ORDER.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!CRUZADA_ORDER.includes(k))];
+
+  // As classes abertas na tela definem o detalhamento do relatório
+  const abertas=[...document.querySelectorAll('#summary-cruzada-body tr.cz-row.aberta')]
+    .map(tr=>tr.querySelector('.cruzada-badge')?.textContent.trim()).filter(k=>k&&groups[k]);
+
+  const resumo=`<table>
+    <thead><tr><th>Cruzada</th><th class="num">Produtos</th><th class="num">% Prod.</th><th class="num">Faturamento</th><th class="num">% Fat.</th></tr></thead>
+    <tbody>${keys.map(cz=>`<tr${abertas.includes(cz)?' class="destaque"':''}>
+      <td><span class="cz-tag">${esc(cz)}</span></td>
+      <td class="num">${fmtInt(groups[cz].prods)}</td>
+      <td class="num">${totalProd>0?fmtPct(groups[cz].prods/totalProd*100):'—'}</td>
+      <td class="num">${fmtBRL(groups[cz].fat)}</td>
+      <td class="num">${totalFat>0?fmtPct(groups[cz].fat/totalFat*100):'—'}</td>
+    </tr>`).join('')}
+    <tr class="total"><td>Total</td><td class="num">${fmtInt(totalProd)}</td><td class="num">100%</td><td class="num">${fmtBRL(totalFat)}</td><td class="num">100%</td></tr></tbody>
+  </table>`;
+
+  const detalhe=abertas.map(cz=>{
+    const g=groups[cz];
+    const ord=czAgrupaFamilias(g.rows);
+    const corpo=ord.map(([f,fg])=>`<tr class="fam">
+        <td colspan="2">${esc(FAMILY_NAMES[f]||('Família '+f))} — ${fg.rows.length} produto${fg.rows.length!==1?'s':''}</td>
+        <td class="num">${fmtInt(fg.qtd)}</td>
+        <td class="num">${fmtBRL(fg.fat)}</td>
+        <td class="num">${g.fat>0?fmtPct(fg.fat/g.fat*100):'—'}</td>
+      </tr>`+sortByFat(fg.rows).map(r=>`<tr>
+        <td class="cod">${esc(r[COL.COD]||'')}</td>
+        <td>${esc(r[COL.DESC]||'')}</td>
+        <td class="num">${fmtInt(num(r,COL.QTD))}</td>
+        <td class="num">${fmtBRL(num(r,COL.FAT))}</td>
+        <td class="num">${g.fat>0?fmtPct(num(r,COL.FAT)/g.fat*100):'—'}</td>
+      </tr>`).join('')).join('');
+    return `<div class="bloco">
+      <div class="bloco-tt"><span class="cz-tag">${esc(cz)}</span> ${g.rows.length} produtos em ${ord.length} família(s) · ${fmtBRL(g.fat)} · ${totalFat>0?fmtPct(g.fat/totalFat*100):'—'} do faturamento</div>
+      <table>
+        <thead><tr><th>Cód. / Família</th><th>Produto</th><th class="num">Qtd</th><th class="num">Faturamento</th><th class="num">% Fat. ${esc(cz)}</th></tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const nota80=czNota80(filtered,keys,groups,totalFat);
+  const periodo=(document.getElementById('f-periodo')||{}).value||'';
+  const w=window.open('','_blank','width=1200,height=850');
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8"/>
+<title>Curva ABC — Distribuição por Cruzada</title>
+<style>
+@page{size:A4;margin:10mm 12mm;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:8.5pt;color:#1e2532;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.p-brand{display:flex;align-items:center;gap:3mm;padding:3mm 4mm;margin-bottom:2mm;background:linear-gradient(135deg,#1a1a2e,#16213e 60%,#0f3460);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.p-brand img{height:8mm;width:auto;background:#fff;padding:1mm 2mm;border-radius:1mm;}
+.p-brand-lb{font-size:6pt;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#f5a623;}
+.p-title{font-size:13pt;font-weight:700;color:#fff;margin:.8mm 0 .4mm;}
+.p-brand-nome{font-size:7.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a0aec0;}
+.p-meta{font-size:7.5pt;color:#6b7a99;margin:1mm 0 3mm;padding-bottom:2mm;border-bottom:1.5px solid #c2410c;display:flex;justify-content:space-between;gap:6mm;flex-wrap:wrap;}
+.p-sec{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7a99;margin:4mm 0 1.5mm;}
+table{width:100%;border-collapse:collapse;font-size:7.5pt;page-break-inside:auto;}
+th{font-size:6.2pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7a99;background:#f1f5f9;padding:1.2mm 1.5mm;text-align:left;border-bottom:1px solid #cbd5e1;}
+td{padding:1mm 1.5mm;border-bottom:1px solid #eef2f7;}
+tr{page-break-inside:avoid;}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+th.num{text-align:right;}
+.cod{font-family:'Consolas',monospace;font-size:6.8pt;color:#6b7a99;white-space:nowrap;}
+.cz-tag{display:inline-block;font-weight:700;font-size:6.5pt;letter-spacing:.04em;background:#1e3a8a;color:#fff;padding:.4mm 1.4mm;border-radius:2px;}
+tr.total td{font-weight:700;border-top:1.2px solid #cbd5e1;background:#f8fafc;}
+tr.destaque td{background:#eef4ff;}
+tr.fam td{background:#f1f5f9;font-weight:700;border-top:1px solid #cbd5e1;}
+.bloco{margin-top:4mm;page-break-inside:auto;}
+.bloco-tt{font-size:8pt;font-weight:700;color:#1e2532;margin-bottom:1.5mm;display:flex;align-items:center;gap:2mm;}
+.p-nota{font-size:6.5pt;color:#6b7a99;line-height:1.5;margin-top:4mm;border-top:1px solid #e3e8f0;padding-top:2mm;}
+.p-nota80{font-size:7.5pt;line-height:1.5;margin-top:2mm;padding:1.5mm 2mm;border-left:1mm solid #1d4ed8;background:#eef4ff;}
+</style></head><body>
+<div class="p-brand"><img src="${LOGO_PATRIMAR}" alt="Patrimar"><div><div class="p-brand-lb">PPCP — Planejamento e Controle da Produção</div><div class="p-title">Distribuição por Cruzada (Valor × Quantidade)</div><div class="p-brand-nome">Curva ABC</div></div></div>
+<div class="p-meta">
+  <span><strong>${esc(periodo||'Período não informado')}</strong> · ${fmtInt(totalProd)} produtos · ${fmtBRL(totalFat)}</span>
+  <span>gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+</div>
+<div class="p-sec">Resumo por classe cruzada</div>
+${resumo}
+${nota80?`<div class="p-nota80">${nota80}</div>`:''}
+${detalhe?`<div class="p-sec">Produtos por família — ${esc(abertas.join(', '))}</div>${detalhe}`:''}
+<div class="p-nota">${detalhe
+  ?'Detalhamento das classes abertas na tela no momento da geração. Os percentuais de família e produto são calculados sobre o faturamento da própria classe.'
+  :'Nenhuma classe estava aberta na tela — o relatório saiu apenas com o resumo. Para detalhar, clique nas linhas desejadas (AA, AB…) antes de gerar.'}</div>
+</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{w.print();w.close();},400);
 }
 
 function renderSummaryTable(bodyId,classCol,data){
