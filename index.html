@@ -1431,14 +1431,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
             <tbody id="summary-cruzada-body"></tbody>
           </table>
         </div>
-        <div class="summary-card" style="grid-column:1/-1;">
-          <h4>Curva ABC por Família</h4>
-          <p id="summary-familia-headline" style="color:var(--text-muted);font-size:.75rem;margin:.2rem 0 .6rem;"></p>
-          <table class="summary-table">
-            <thead><tr><th>Classe</th><th>Família</th><th>Produtos</th><th>Qtd</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
-            <tbody id="summary-familia-body"></tbody>
-          </table>
-        </div>
       </div>
     </section>
 
@@ -1998,7 +1990,7 @@ function renderEvolucao(){
       if(isAlwaysA){
         const avgFat=PERIODOS.reduce((s,p)=>{const r=maps[PERIODOS.indexOf(p)].get(cod);return s+(r?num(r,COL.FAT):0);},0)/n;
         const r0=maps[0].get(cod);
-        champions.push({cod,desc:String(r0[COL.DESC]||''),familia:String(r0[COL.COD]||'').split('.')[0],avgFat});
+        champions.push({cod,desc:String(r0[COL.DESC]||''),familia:getFamilia(r0),avgFat});
       }
     });
     champions.sort((a,b)=>b.avgFat-a.avgFat);
@@ -2061,7 +2053,12 @@ function sumFat(arr){ return arr.reduce((s,r)=>s+num(r,COL.FAT),0); }
 function sumQtd(arr){ return arr.reduce((s,r)=>s+num(r,COL.QTD),0); }
 function sortByFat(arr){ return [...arr].sort((a,b)=>num(b,COL.FAT)-num(a,COL.FAT)); }
 function fmtAxisBRL(v){ return v>=1e6?'R$'+(v/1e6).toFixed(1)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v; }
-function getFamilia(r){ return String(r[COL.COD]||'').split('.')[0]; }
+// Família = 3 primeiros dígitos do código, com ou sem pontos
+// (103.001.116 e 103001116 → "103"); código fora do padrão volta inteiro.
+function getFamilia(r){
+  const c=String(r[COL.COD]||'').replace(/[.\s]/g,'').trim();
+  return /^\d{7,}$/.test(c)?c.slice(0,3):c;
+}
 
 function clearFilterInputs(){
   FILTER_IDS.forEach(id=>document.getElementById(id).value='');
@@ -2674,7 +2671,7 @@ function renderEvolucao(){
       if(isAlwaysA){
         const avgFat=PERIODOS.reduce((s,p)=>{const r=maps[PERIODOS.indexOf(p)].get(cod);return s+(r?num(r,COL.FAT):0);},0)/n;
         const r0=maps[0].get(cod);
-        champions.push({cod,desc:String(r0[COL.DESC]||''),familia:String(r0[COL.COD]||'').split('.')[0],avgFat});
+        champions.push({cod,desc:String(r0[COL.DESC]||''),familia:getFamilia(r0),avgFat});
       }
     });
     champions.sort((a,b)=>b.avgFat-a.avgFat);
@@ -2700,7 +2697,12 @@ function sumFat(arr){ return arr.reduce((s,r)=>s+num(r,COL.FAT),0); }
 function sumQtd(arr){ return arr.reduce((s,r)=>s+num(r,COL.QTD),0); }
 function sortByFat(arr){ return [...arr].sort((a,b)=>num(b,COL.FAT)-num(a,COL.FAT)); }
 function fmtAxisBRL(v){ return v>=1e6?'R$'+(v/1e6).toFixed(1)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v; }
-function getFamilia(r){ return String(r[COL.COD]||'').split('.')[0]; }
+// Família = 3 primeiros dígitos do código, com ou sem pontos
+// (103.001.116 e 103001116 → "103"); código fora do padrão volta inteiro.
+function getFamilia(r){
+  const c=String(r[COL.COD]||'').replace(/[.\s]/g,'').trim();
+  return /^\d{7,}$/.test(c)?c.slice(0,3):c;
+}
 
 function clearFilterInputs(){
   FILTER_IDS.forEach(id=>document.getElementById(id).value='');
@@ -2787,8 +2789,6 @@ function resetAll(){
   document.getElementById('summary-val-body').innerHTML='';
   document.getElementById('summary-qtd-body').innerHTML='';
   const _cb=document.getElementById('summary-cruzada-body');if(_cb)_cb.innerHTML='';
-  const _fb=document.getElementById('summary-familia-body');if(_fb)_fb.innerHTML='';
-  const _fh=document.getElementById('summary-familia-headline');if(_fh)_fh.textContent='';
   document.getElementById('insights-list').innerHTML='';
   document.getElementById('flag-impact-banner').classList.remove('visible','mode-exc','mode-lanc','mode-linha');
   activeFlags.clear();
@@ -3260,51 +3260,6 @@ function renderSummary(){
   renderSummaryTable('summary-val-body',COL.ABC_VAL,filtered);
   renderSummaryTable('summary-qtd-body',COL.ABC_QTD,filtered);
   renderCruzadaTable(filtered);
-  renderFamiliaTable(filtered);
-}
-
-// Curva ABC agregada por família — mesma régua do calcABCDinamico (classe
-// pela % acumulada antes da linha: <80 A, <95 B, resto C). Responde
-// "quais famílias compõem 80% do faturamento?".
-function renderFamiliaTable(data){
-  const tbody=document.getElementById('summary-familia-body');
-  if(!tbody)return;
-  const head=document.getElementById('summary-familia-headline');
-  const fams={};
-  data.forEach(r=>{
-    const f=getFamilia(r)||'—';
-    (fams[f]=fams[f]||{prods:0,fat:0,qtd:0});
-    fams[f].prods++; fams[f].fat+=num(r,COL.FAT); fams[f].qtd+=num(r,COL.QTD);
-  });
-  const totalFat=sumFat(data);
-  const ord=Object.entries(fams).sort((a,b)=>b[1].fat-a[1].fat);
-  if(!ord.length){tbody.innerHTML='';if(head)head.textContent='';return;}
-  let acum=0, nA=0, fatA=0;
-  const linhas=ord.map(([f,g])=>{
-    const prev=totalFat>0?acum/totalFat*100:0;
-    acum+=g.fat;
-    const pAcum=totalFat>0?acum/totalFat*100:0;
-    const cls=prev<80?'A':prev<95?'B':'C';
-    if(cls==='A'){nA++;fatA+=g.fat;}
-    return `<tr${cls==='A'?' style="background:rgba(29,78,216,.10);"':''}>
-      <td>${classBadge(cls)}</td>
-      <td>${FAMILY_NAMES[f]||('Família '+f)}</td>
-      <td class="num">${fmtInt(g.prods)}</td>
-      <td class="num">${fmtInt(g.qtd)}</td>
-      <td class="num">${fmtBRL(g.fat)}</td>
-      <td class="num">${totalFat>0?fmtPct(g.fat/totalFat*100):'—'}</td>
-      <td class="num">${fmtPct(pAcum)}</td>
-    </tr>`;
-  }).join('');
-  tbody.innerHTML=linhas+`<tr>
-      <td colspan="2"><strong>Total</strong></td>
-      <td class="num"><strong>${fmtInt(data.length)}</strong></td>
-      <td class="num"><strong>${fmtInt(sumQtd(data))}</strong></td>
-      <td class="num"><strong>${fmtBRL(totalFat)}</strong></td>
-      <td class="num"><strong>100%</strong></td>
-      <td class="num"></td>
-    </tr>`;
-  if(head)head.innerHTML=`<strong>${nA} de ${ord.length} família${ord.length!==1?'s':''}</strong> concentra${nA===1?'':'m'} <strong>${totalFat>0?fmtPct(fatA/totalFat*100):'—'}</strong> do faturamento (classe A — corte em 80% acumulado, destacadas abaixo).`;
 }
 
 const CRUZADA_ORDER=['AA','AB','AC','BA','BB','BC','CA','CB','CC','EXC_A','EXC_B','EXC_C','LANÇ_A','LANÇ_B','LANÇ_C'];
