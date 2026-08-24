@@ -283,6 +283,15 @@ header{background:var(--card);color:var(--text);padding:0 1.5rem;display:flex;al
 .cor-det-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:.2rem 0 .5rem;}
 .cor-det table{font-size:.8rem;}
 .cor-det .fora-base{opacity:.55;}
+/* linha da cruzada clicável → produtos da classe agrupados por família */
+.cz-row{cursor:pointer;}
+.cz-row:hover td{background:rgba(255,255,255,.03);}
+.cz-chev{display:inline-block;margin-right:.35rem;font-size:.68rem;color:var(--text-muted);transition:transform .15s;}
+.cz-row.aberta .cz-chev{transform:rotate(90deg);}
+.cz-det>td{background:rgba(255,255,255,.02);padding:.6rem .8rem 1rem;}
+.cz-det-head{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:.2rem 0 .5rem;}
+.cz-det table{font-size:.8rem;}
+.cz-fam-row td{background:rgba(255,255,255,.05);font-weight:700;}
 /* main é flex column: sem min-width:0 a seção não encolhe e a tabela larga
    empurra a página inteira em vez de rolar dentro do próprio scroller. */
 #sec-cores{min-width:0;}
@@ -1416,6 +1425,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:.6rem 1
         </div>
         <div class="summary-card" style="grid-column:1/-1;">
           <h4>Distribuição por Cruzada (Valor × Quantidade)</h4>
+          <p style="color:var(--text-muted);font-size:.75rem;margin:.2rem 0 .6rem;">Clique numa linha (AA, AB…) para abrir a lista de produtos da classe, agrupada por família.</p>
           <table class="summary-table">
             <thead><tr><th>Cruzada</th><th>Produtos</th><th>% Prod.</th><th>Faturamento</th><th>% Fat.</th></tr></thead>
             <tbody id="summary-cruzada-body"></tbody>
@@ -3251,19 +3261,20 @@ function renderCruzadaTable(data){
   data.forEach(r=>{
     const cz=String(r[COL.CRUZADA]||'').trim().toUpperCase();
     if(!cz)return;
-    (groups[cz]=groups[cz]||{prods:0,fat:0});
-    groups[cz].prods++; groups[cz].fat+=num(r,COL.FAT);
+    (groups[cz]=groups[cz]||{prods:0,fat:0,rows:[]});
+    groups[cz].prods++; groups[cz].fat+=num(r,COL.FAT); groups[cz].rows.push(r);
   });
   const keys=[...CRUZADA_ORDER.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!CRUZADA_ORDER.includes(k))];
   tbody.innerHTML=keys.map(cz=>{
     const g=groups[cz];
-    return `<tr>
-      <td>${cruzadaBadge(cz)}</td>
+    return `<tr class="cz-row" onclick="toggleCzProdutos(this)" title="Clique para ver os produtos ${cz} por família">
+      <td><span class="cz-chev">▸</span>${cruzadaBadge(cz)}</td>
       <td class="num">${fmtInt(g.prods)}</td>
       <td class="num">${totalProd>0?fmtPct(g.prods/totalProd*100):'—'}</td>
       <td class="num">${fmtBRL(g.fat)}</td>
       <td class="num">${totalFat>0?fmtPct(g.fat/totalFat*100):'—'}</td>
-    </tr>`;
+    </tr>
+    <tr class="cz-det" style="display:none;"><td colspan="5">${czFamiliasHTML(cz,g)}</td></tr>`;
   }).join('')+`<tr>
       <td><strong>Total</strong></td>
       <td class="num"><strong>${fmtInt(totalProd)}</strong></td>
@@ -3271,6 +3282,47 @@ function renderCruzadaTable(data){
       <td class="num"><strong>${fmtBRL(totalFat)}</strong></td>
       <td class="num"><strong>100%</strong></td>
     </tr>`;
+}
+
+// Produtos de uma cruzada agrupados por família — responde "quais famílias
+// compõem a curva AA/AB?" sem precisar exportar a tabela completa.
+function czFamiliasHTML(cz,g){
+  const fams={};
+  g.rows.forEach(r=>{
+    const f=getFamilia(r)||'—';
+    (fams[f]=fams[f]||{rows:[],fat:0,qtd:0});
+    fams[f].rows.push(r); fams[f].fat+=num(r,COL.FAT); fams[f].qtd+=num(r,COL.QTD);
+  });
+  const ord=Object.entries(fams).sort((a,b)=>b[1].fat-a[1].fat);
+  const linhas=ord.map(([f,fg])=>{
+    const nome=FAMILY_NAMES[f]||('Família '+f);
+    return `<tr class="cz-fam-row">
+      <td colspan="2">${nome} — ${fg.rows.length} produto${fg.rows.length!==1?'s':''}</td>
+      <td class="num">${fmtInt(fg.qtd)}</td>
+      <td class="num">${fmtBRL(fg.fat)}</td>
+      <td class="num">${g.fat>0?fmtPct(fg.fat/g.fat*100):'—'}</td>
+    </tr>`+sortByFat(fg.rows).map(r=>`<tr>
+      <td style="white-space:nowrap;">${r[COL.COD]||''}</td>
+      <td title="${r[COL.DESC]||''}">${truncate(String(r[COL.DESC]||''),48)}</td>
+      <td class="num">${fmtInt(num(r,COL.QTD))}</td>
+      <td class="num">${fmtBRL(num(r,COL.FAT))}</td>
+      <td class="num">${g.fat>0?fmtPct(num(r,COL.FAT)/g.fat*100):'—'}</td>
+    </tr>`).join('');
+  }).join('');
+  return `<div class="cz-det-head">${g.rows.length} produto(s) em ${ord.length} família(s) na cruzada ${cz} — % sobre o faturamento da classe</div>
+  <table class="summary-table">
+    <thead><tr><th>Cód. / Família</th><th>Produto</th><th>Qtd</th><th>Faturamento</th><th>% Fat. ${cz}</th></tr></thead>
+    <tbody>${linhas}</tbody>
+  </table>`;
+}
+
+// Clique na linha da cruzada → mostra/esconde a lista logo abaixo
+function toggleCzProdutos(tr){
+  const det=tr.nextElementSibling;
+  if(!det||!det.classList.contains('cz-det'))return;
+  const abrir=det.style.display==='none';
+  det.style.display=abrir?'':'none';
+  tr.classList.toggle('aberta',abrir);
 }
 
 function renderSummaryTable(bodyId,classCol,data){
